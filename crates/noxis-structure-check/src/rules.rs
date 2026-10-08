@@ -1,31 +1,32 @@
 //! Project structure rules, invoked from every crate's `build.rs`.
 //!
-//! Rules:
-//! * every `.rs` and `.md` file is at most [`MAX_FILE_LINES`] lines long;
-//! * every directory inside a crate `src/` or the workspace `docs/` holds at
-//!   most [`MAX_DIR_FILES`] files — subdirectories are unlimited.
+//! Rules apply to Rust code only, not to documentation:
+//! * every `.rs` file is at most [`MAX_FILE_LINES`] lines long;
+//! * every directory inside a crate's `src/`, `tests/` or `benches/` holds
+//!   at most [`MAX_DIR_FILES`] files — subdirectories are unlimited.
 //!
-//! Deliberately excluded: `Cargo.lock`, `.gitignore`, the legacy `info/` tree,
-//! and crate roots (they always own `Cargo.toml` plus `build.rs`).
+//! Deliberately excluded: `Cargo.lock`, `.gitignore`, `docs/`, the legacy
+//! `info/` tree, and crate roots (they always own `Cargo.toml` plus
+//! `build.rs`).
 
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Maximum number of lines in a source (`rs`) or documentation (`md`) file.
+/// Maximum number of lines in a Rust source file.
 pub const MAX_FILE_LINES: usize = 250;
 
 /// Maximum number of files per directory; subdirectories are not counted.
 pub const MAX_DIR_FILES: usize = 4;
 
 /// Extensions subject to [`MAX_FILE_LINES`].
-const LINE_LIMITED_EXTS: [&str; 2] = ["rs", "md"];
+const LINE_LIMITED_EXTS: [&str; 1] = ["rs"];
 
 /// Directory names the scan never descends into.
 const SKIPPED_DIRS: [&str; 2] = ["target", ".git"];
 
-/// Scans the calling crate's `src/`/`tests/`/`benches/` plus the workspace
-/// `docs/` tree and panics with a report on the first violation.
+/// Scans the calling crate's `src/`/`tests/`/`benches/` and panics with a
+/// report on the first violation.
 ///
 /// # Panics
 ///
@@ -35,13 +36,13 @@ pub fn check() {
     let mut violations = Vec::new();
 
     // `src/` обязателен; `tests/` и `benches/` проверяются, если созданы —
-    // иначе правило «250 строк» обходится выносом кода в тесты.
-    let mut roots = vec![manifest.join("src"), manifest.join("tests")];
-    roots.push(manifest.join("benches"));
-
-    if let Some(root) = workspace_root(&manifest) {
-        roots.push(root.join("docs"));
-    }
+    // иначе правило «250 строк» обходится выносом кода в тесты. `docs/` вне
+    // гейта: правила — только про Rust-код.
+    let roots = [
+        manifest.join("src"),
+        manifest.join("tests"),
+        manifest.join("benches"),
+    ];
 
     for root in &roots {
         watch(root);
@@ -64,8 +65,9 @@ pub fn check() {
 
 /// Re-runs the build script whenever a checked tree changes.
 ///
-/// Without this cargo only invalidates `build.rs` on crate-local changes, so
-/// editing `docs/` would never be re-validated.
+/// Without an explicit `rerun-if-changed`, cargo falls back to its default
+/// (rerun on any change anywhere in the package); naming the trees keeps the
+/// gate from firing on unrelated edits.
 fn watch(root: &Path) {
     if root.is_dir() {
         println!("cargo:rerun-if-changed={}", root.display());
@@ -101,6 +103,10 @@ pub fn scan(root: &Path, violations: &mut Vec<String>) {
             subdirs.push(path);
             continue;
         }
+        let ext = path.extension().and_then(OsStr::to_str).unwrap_or_default();
+        if !LINE_LIMITED_EXTS.contains(&ext) {
+            continue;
+        }
         files += 1;
         check_line_limit(&path, violations);
     }
@@ -118,10 +124,6 @@ pub fn scan(root: &Path, violations: &mut Vec<String>) {
 }
 
 fn check_line_limit(path: &Path, violations: &mut Vec<String>) {
-    let ext = path.extension().and_then(OsStr::to_str).unwrap_or_default();
-    if !LINE_LIMITED_EXTS.contains(&ext) {
-        return;
-    }
     let lines = count_lines(path);
     if lines > MAX_FILE_LINES {
         violations.push(format!(
@@ -148,18 +150,4 @@ fn manifest_dir() -> PathBuf {
         Some(value) => PathBuf::from(value),
         None => panic!("CARGO_MANIFEST_DIR is unset; run this check from a build script"),
     }
-}
-
-/// Walks up from `start` until a manifest declaring `[workspace]` is found.
-fn workspace_root(start: &Path) -> Option<PathBuf> {
-    let mut current = Some(start);
-    while let Some(dir) = current {
-        if let Ok(text) = fs::read_to_string(dir.join("Cargo.toml"))
-            && text.lines().any(|line| line.trim() == "[workspace]")
-        {
-            return Some(dir.to_path_buf());
-        }
-        current = dir.parent();
-    }
-    None
 }

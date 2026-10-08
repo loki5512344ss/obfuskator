@@ -120,9 +120,9 @@ Rename → Resources → Strings → Constants → Flow → Noise → DebugInfo
 
 | этап | что |
 |---|---|
-| **готово** | IR, модель, конфиг, seed/PRNG, маппинги, анализ, keep, переименование, шифры строк, гейт правил, `format::parse`/`write` поверх ристретто, вывод кадров `StackMapTable` |
-| **P2** | пассы строк/констант/шума/потока, генератор декодера, CLI |
-| **P2** | генерация класса-декодера, вывод мастер-секрета, остальные пассы |
-| **P3** | CLI, метрики, интеграция с `java -Xverify:all` |
+| **готово** | IR, модель, конфиг, seed/PRNG, маппинги, анализ, keep, гейт правил, `format::parse`/`write` поверх ристретто, вывод кадров `StackMapTable` |
+| **готово** | пассы rename/resources/strings/constants/noise/debug, генератор декодера, вывод мастер-секрета в рантайме |
+| **готово** | `noxis-verify` (red-паттерны, `java -Xverify:all`, метрики), CLI (`obfuscate`/`analyze`/`patterns`) |
+| **план** | схемы пасса `flow` (кадры для них уже считаются), фикстуры и regression-тесты |
 
 Детали выбора — [`stack.md`](stack.md), план — [`../todo.md`](../todo.md).

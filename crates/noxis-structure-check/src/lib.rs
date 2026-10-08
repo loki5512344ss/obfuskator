@@ -76,4 +76,16 @@ mod tests {
         let found = violations(&tmp.0);
         assert!(found.is_empty(), "{found:?}");
     }
+
+    #[test]
+    fn ignores_markdown_size_and_count() {
+        // Правила — только про Rust-код: `.md` не лимитирован ни по
+        // строкам, ни в счётчике файлов директории.
+        let tmp = TempDir::new("md");
+        for index in 0..super::MAX_DIR_FILES + 3 {
+            fs::write(tmp.0.join(format!("doc{index}.md")), "line\n".repeat(300)).expect("write");
+        }
+        let found = violations(&tmp.0);
+        assert!(found.is_empty(), "{found:?}");
+    }
 }
