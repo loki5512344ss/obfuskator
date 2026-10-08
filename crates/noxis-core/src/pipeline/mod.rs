@@ -87,6 +87,10 @@ impl Pipeline {
 
         for pass in &self.passes {
             let id = pass.id();
+            if !ctx.config.is_enabled(id) {
+                tracing::info!(target: "noxis", pass = %id, "пасс выключен — пропущен");
+                continue;
+            }
             tracing::info!(target: "noxis", pass = %id, "пасс запущен");
             let result = pass.apply(ctx, program)?;
             tracing::info!(

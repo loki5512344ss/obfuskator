@@ -55,7 +55,7 @@ pub(super) fn convert_code(code: &Code, pool: &mut Pool) -> Result<RtAttr, Class
         resolve: &resolve,
         byte_of: &byte_of,
     };
-    let frames = convert_frames(&code.frames, pool)?;
+    let frames = convert_frames(&code.frames, pool, &byte_of)?;
     let mut attributes = Vec::with_capacity(code.attributes.len() + 1);
     for attr in &code.attributes {
         attributes.push(match attr {
