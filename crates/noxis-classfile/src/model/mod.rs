@@ -19,6 +19,10 @@ pub enum Attribute {
     Deprecated,
     Synthetic,
     InnerClasses(Vec<InnerClass>),
+    /// `NestHost`: класс, служащий nest-хостом (JVMS §4.7.28).
+    NestHost(String),
+    /// `NestMembers`: классы-члены этого nest-хоста (JVMS §4.7.29).
+    NestMembers(Vec<String>),
     /// `ConstantValue` поля (`static final`): значение из пула.
     ConstantValue(Const),
     /// `BootstrapMethods` для `invokedynamic` (лямбды): метод + аргументы.

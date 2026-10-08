@@ -3,20 +3,16 @@
 //! Имена атрибутов (`SourceFile`, …) интернируются в пул здесь же — backend
 //! хранит только `name_index`, строка восстанавливается при чтении.
 
-use ristretto_classfile::MethodAccessFlags;
 use ristretto_classfile::attributes::{
-    Attribute as RtAttr, BootstrapMethod as RtBsm, InnerClass as RtInner, LineNumber as RtLine,
-    LocalVariableTable as RtLocal, LocalVariableTypeTable as RtLocalType,
-    MethodParameter as RtParam, NestedClassAccessFlags, Record as RtRecord,
+    Attribute as RtAttr, LineNumber as RtLine, LocalVariableTable as RtLocal,
+    LocalVariableTypeTable as RtLocalType, Record as RtRecord,
 };
 
+use super::helpers;
 use super::pool::Pool;
 use crate::error::ClassfileError;
-use crate::insn::{Const, Label};
-use crate::model::{
-    Attribute, BootstrapMethod, InnerClass, LineNumber, LocalVariable, LocalVariableType,
-    MethodParameter,
-};
+use crate::insn::Label;
+use crate::model::{Attribute, LineNumber, LocalVariable, LocalVariableType};
 
 /// Позиции таблиц кода: метки → байты текущего layout.
 pub(super) struct Positions<'a> {
@@ -135,7 +131,18 @@ pub(super) fn convert(attr: &Attribute, pool: &mut Pool) -> Result<RtAttr, Class
             name_index: pool.utf8("InnerClasses")?,
             classes: classes
                 .iter()
-                .map(|class| inner(class, pool))
+                .map(|class| helpers::inner(class, pool))
+                .collect::<Result<_, _>>()?,
+        },
+        Attribute::NestHost(host) => RtAttr::NestHost {
+            name_index: pool.utf8("NestHost")?,
+            host_class_index: pool.class(host)?,
+        },
+        Attribute::NestMembers(members) => RtAttr::NestMembers {
+            name_index: pool.utf8("NestMembers")?,
+            class_indexes: members
+                .iter()
+                .map(|name| pool.class(name))
                 .collect::<Result<_, _>>()?,
         },
         Attribute::ConstantValue(value) => RtAttr::ConstantValue {
@@ -146,7 +153,7 @@ pub(super) fn convert(attr: &Attribute, pool: &mut Pool) -> Result<RtAttr, Class
             name_index: pool.utf8("BootstrapMethods")?,
             methods: methods
                 .iter()
-                .map(|method| bootstrap(method, pool))
+                .map(|method| helpers::bootstrap(method, pool))
                 .collect::<Result<_, _>>()?,
         },
         Attribute::EnclosingMethod { class, method } => RtAttr::EnclosingMethod {
@@ -161,7 +168,7 @@ pub(super) fn convert(attr: &Attribute, pool: &mut Pool) -> Result<RtAttr, Class
             name_index: pool.utf8("MethodParameters")?,
             parameters: params
                 .iter()
-                .map(|param| method_param(param, pool))
+                .map(|param| helpers::method_param(param, pool))
                 .collect::<Result<_, _>>()?,
         },
         Attribute::Raw { name, data } => RtAttr::Unknown {
@@ -192,59 +199,5 @@ pub(super) fn convert(attr: &Attribute, pool: &mut Pool) -> Result<RtAttr, Class
                 })
                 .collect::<Result<_, ClassfileError>>()?,
         },
-    })
-}
-
-fn inner(class: &InnerClass, pool: &mut Pool) -> Result<RtInner, ClassfileError> {
-    Ok(RtInner {
-        class_info_index: pool.class(&class.inner)?,
-        outer_class_info_index: match &class.outer {
-            None => 0,
-            Some(name) => pool.class(name)?,
-        },
-        name_index: match &class.inner_name {
-            None => 0,
-            Some(name) => pool.utf8(name)?,
-        },
-        access_flags: NestedClassAccessFlags::from_bits_truncate(class.access_flags),
-    })
-}
-
-fn bootstrap(method: &BootstrapMethod, pool: &mut Pool) -> Result<RtBsm, ClassfileError> {
-    Ok(RtBsm {
-        bootstrap_method_ref: pool.method_handle(
-            method.kind,
-            &method.owner,
-            &method.name,
-            &method.descriptor,
-            method.itf,
-        )?,
-        arguments: method
-            .args
-            .iter()
-            .map(|arg| bootstrap_arg(arg, pool))
-            .collect::<Result<_, _>>()?,
-    })
-}
-
-/// Аргумент bootstrap-метода: те же константы, что в `ldc`, плюс `Dynamic`.
-fn bootstrap_arg(arg: &Const, pool: &mut Pool) -> Result<u16, ClassfileError> {
-    match arg {
-        Const::Dynamic {
-            name,
-            descriptor,
-            bootstrap,
-        } => pool.dynamic(*bootstrap, name, descriptor),
-        _ => pool.constant(arg),
-    }
-}
-
-fn method_param(param: &MethodParameter, pool: &mut Pool) -> Result<RtParam, ClassfileError> {
-    Ok(RtParam {
-        name_index: match &param.name {
-            None => 0,
-            Some(name) => pool.utf8(name)?,
-        },
-        access_flags: MethodAccessFlags::from_bits_truncate(param.access_flags),
     })
 }

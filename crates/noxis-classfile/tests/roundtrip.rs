@@ -205,6 +205,30 @@ fn bootstrap_methods_round_trip() {
     assert!(format!("{:?}", ir.attributes[0]).contains("BootstrapMethods"));
 }
 
+/// `NestMembers` переживает пересборку пула (баг: `ClassFormatError`).
+#[test]
+fn nest_attributes_round_trip() {
+    let mut pool = ConstantPool::default();
+    let this = pool.add_class("demo/Nest").expect("c");
+    let object = pool.add_class("java/lang/Object").expect("o");
+    let member = pool.add_class("demo/Nest$Inner").expect("m");
+    let mn = pool.add_utf8("NestMembers").expect("n");
+    let mems = RtAttr::NestMembers {
+        name_index: mn,
+        class_indexes: vec![this, member],
+    };
+    let rt = RtClass {
+        version: JAVA_21,
+        constant_pool: pool,
+        this_class: this,
+        super_class: object,
+        attributes: vec![mems],
+        ..RtClass::default()
+    };
+    let ir = round_trip(&rt);
+    assert!(format!("{:?}", ir.attributes).contains("NestMembers"));
+}
+
 /// `parse → write → parse` даёт тот же IR; записанное верифицируется.
 fn round_trip(rt: &RtClass<'_>) -> ClassFile {
     let mut original = Vec::new();

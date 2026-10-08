@@ -38,6 +38,15 @@ pub(super) fn convert(attr: &RtAttr, pool: &ConstantPool<'_>) -> Result<Attribut
                 .map(|class| inner(pool, class))
                 .collect::<Result<_, _>>()?,
         ),
+        RtAttr::NestHost {
+            host_class_index, ..
+        } => Attribute::NestHost(class_name(pool, *host_class_index)?),
+        RtAttr::NestMembers { class_indexes, .. } => Attribute::NestMembers(
+            class_indexes
+                .iter()
+                .map(|index| class_name(pool, *index))
+                .collect::<Result<_, _>>()?,
+        ),
         RtAttr::EnclosingMethod {
             class_index,
             method_index,

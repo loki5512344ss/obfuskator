@@ -5,6 +5,7 @@
 
 mod attrs;
 pub(crate) mod code;
+mod helpers;
 pub(crate) mod pool;
 
 use ristretto_classfile::{
