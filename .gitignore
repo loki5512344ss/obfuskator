@@ -2,6 +2,9 @@
 /target
 **/*.rs.bk
 
+# План работ — локальный, не публикуется в истории
+/todo.md
+
 # Локальный cargo-config (может содержать секреты репозитория)
 /.cargo/config.toml
 /config.toml
