@@ -1,0 +1,21 @@
+[package]
+name = "noxis-passes"
+description = "Трансформации: переименование, строки, константы, CFG, шум, отладка"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+noxis-analysis = { workspace = true }
+noxis-classfile = { workspace = true }
+noxis-core = { workspace = true }
+noxis-runtime = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[lints]
+workspace = true
+
+[build-dependencies]
+noxis-structure-check = { workspace = true }

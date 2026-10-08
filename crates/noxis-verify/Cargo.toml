@@ -1,0 +1,22 @@
+[package]
+name = "noxis-verify"
+description = "Проверка обфускации: утечки имён, секреты в строках, JVM-верификация, метрики"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+regex = { workspace = true }
+serde = { workspace = true }
+noxis-analysis = { workspace = true }
+noxis-classfile = { workspace = true }
+noxis-core = { workspace = true }
+noxis-jar = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true
+
+[build-dependencies]
+noxis-structure-check = { workspace = true }

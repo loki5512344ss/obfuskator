@@ -1,0 +1,100 @@
+//! Переписывание тела метода: инструкции, кадры, handler'ы, атрибуты кода.
+
+use noxis_classfile::{Code, Const, Insn};
+use noxis_core::{Config, Context};
+
+use super::super::assign::{RenameMaps, rewrite_descriptor};
+use super::rewrite_attributes;
+use super::rewrite_frame;
+
+pub(super) fn rewrite_code(
+    code: &mut Code,
+    maps: &RenameMaps,
+    cfg: &Config,
+    orig_owner: &str,
+    ctx: &mut Context,
+    local_counter: &mut u64,
+) {
+    // Имена классов в кадрах тоже переименовываются, иначе верификатор
+    // увидит старые типы (`compute_frames` их не пересчитывает здесь).
+    for frame in code.frames.iter_mut() {
+        rewrite_frame(frame, maps);
+    }
+    for insn in code.insns.iter_mut() {
+        match insn {
+            Insn::Const(Const::Class(name)) => {
+                if let Some(mapped) = maps.classes.get(name.as_str()) {
+                    *name = mapped.clone();
+                }
+            }
+            Insn::GetStatic {
+                owner,
+                name,
+                descriptor,
+            }
+            | Insn::PutStatic {
+                owner,
+                name,
+                descriptor,
+            }
+            | Insn::GetField {
+                owner,
+                name,
+                descriptor,
+            }
+            | Insn::PutField {
+                owner,
+                name,
+                descriptor,
+            } => {
+                if let Some(new_name) = maps.field(owner, name, descriptor) {
+                    *name = new_name;
+                }
+                if let Some(mapped) = maps.classes.get(owner.as_str()) {
+                    *owner = mapped.clone();
+                }
+                *descriptor = rewrite_descriptor(descriptor, &maps.classes);
+            }
+            Insn::Invoke {
+                owner,
+                name,
+                descriptor,
+                ..
+            } => {
+                if let Some(new_name) = maps.method(owner, name, descriptor) {
+                    *name = new_name;
+                }
+                if let Some(mapped) = maps.classes.get(owner.as_str()) {
+                    *owner = mapped.clone();
+                }
+                *descriptor = rewrite_descriptor(descriptor, &maps.classes);
+            }
+            Insn::New(name)
+            | Insn::CheckCast(name)
+            | Insn::InstanceOf(name)
+            | Insn::ANewArray(name) => {
+                if let Some(mapped) = maps.classes.get(name.as_str()) {
+                    *name = mapped.clone();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    for handler in code.exception_table.iter_mut() {
+        if let Some(catch) = handler.catch_type.clone()
+            && let Some(mapped) = maps.classes.get(catch.as_str())
+        {
+            handler.catch_type = Some(mapped.clone());
+        }
+    }
+
+    rewrite_attributes(
+        &mut code.attributes,
+        maps,
+        cfg,
+        orig_owner,
+        ctx,
+        local_counter,
+    );
+}

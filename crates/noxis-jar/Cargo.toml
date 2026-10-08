@@ -1,0 +1,18 @@
+[package]
+name = "noxis-jar"
+description = "Чтение и запись JAR: ZIP-архив, ресурсы, срез подписей"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+noxis-classfile = { workspace = true }
+thiserror = { workspace = true }
+zip = { workspace = true }
+
+[lints]
+workspace = true
+
+[build-dependencies]
+noxis-structure-check = { workspace = true }

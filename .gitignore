@@ -1,0 +1,19 @@
+# Сборочные артефакты Cargo
+/target
+**/*.rs.bk
+
+# Локальный cargo-config (может содержать секреты репозитория)
+/.cargo/config.toml
+/config.toml
+
+# Артефакты тестовых прогонов обфускатора
+/out
+/*.jar
+/*.class
+!tests/data/**/*.class
+
+# Редакторы и ОС
+**/*.swp
+**/.idea/
+**/.vscode/
+.DS_Store

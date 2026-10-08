@@ -1,0 +1,18 @@
+[package]
+name = "noxis-classfile"
+description = "Модель классовых файлов JVM и собственный IR обфускатора"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+indexmap = { workspace = true }
+thiserror = { workspace = true }
+ristretto_classfile = "0.34"
+
+[lints]
+workspace = true
+
+[build-dependencies]
+noxis-structure-check = { workspace = true }
