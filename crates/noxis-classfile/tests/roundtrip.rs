@@ -6,6 +6,7 @@
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+use noxis_classfile::{ClassFile, format};
 use ristretto_classfile::attributes::{
     Attribute as RtAttr, BootstrapMethod as RtBsm, ExceptionTableEntry as RtEntry,
     Instruction as Rt, LineNumber as RtLine, StackFrame as RtFrame,
@@ -14,7 +15,6 @@ use ristretto_classfile::{
     ClassAccessFlags, ClassFile as RtClass, ConstantPool, Field as RtField, FieldAccessFlags,
     FieldType, JAVA_21, Method as RtMethod, MethodAccessFlags, ReferenceKind,
 };
-use noxis_classfile::{ClassFile, format};
 
 /// Минимальный класс: версия, флаги, поле с `ConstantValue`, `SourceFile`.
 #[test]

@@ -3,8 +3,8 @@
 pub mod context;
 pub mod report;
 
-use serde::Serialize;
 use noxis_classfile::Program;
+use serde::Serialize;
 
 use self::context::Context;
 use self::report::Report;

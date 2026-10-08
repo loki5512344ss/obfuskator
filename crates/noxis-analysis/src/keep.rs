@@ -1,7 +1,7 @@
 //! Keep-правила: что нельзя переименовывать (glob-паттерны + entrypoint'ы).
 
-use regex::Regex;
 use noxis_classfile::{Attribute, Const, Program};
+use regex::Regex;
 
 use crate::entrypoints::Entrypoints;
 use noxis_core::Config;

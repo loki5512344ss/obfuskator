@@ -1,8 +1,8 @@
 //! Метрики программы: счётчики, раздувание, стабильность маппингов.
 
-use serde::Serialize;
 use noxis_classfile::{Const, Insn, Program};
 use noxis_core::Mapping;
+use serde::Serialize;
 
 /// Счётчики программы (для отчёта и бюджетов).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
