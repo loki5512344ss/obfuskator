@@ -1,6 +1,8 @@
 //! Генерация имён: стили, анти-ключевые слова, уникальность в scope.
 
 pub mod alphabet;
+#[cfg(test)]
+mod tests;
 
 use std::collections::HashSet;
 
@@ -8,7 +10,7 @@ use noxis_core::{NameStyle, Rng};
 
 use self::alphabet::{
     AVOID_CLASS, AVOID_MEMBER, CONFUSABLE, DECOY_LEFT, DECOY_RIGHT, KEYWORDS, LATIN_LOWER,
-    LATIN_UPPER, UNICODE_LETTERS,
+    LATIN_UPPER, PLAUSIBLE_NOUN, PLAUSIBLE_SUFFIX, PLAUSIBLE_VERB, UNICODE_LETTERS,
 };
 
 /// Генератор имён с гарантированной уникальностью в пределах одного scope.
@@ -68,7 +70,7 @@ impl NameGenerator {
         match self.style {
             NameStyle::ShortLatin | NameStyle::IlO0 | NameStyle::MixedLatin => "z",
             NameStyle::Unicode => "\u{043e}",
-            NameStyle::DecoyWords => "tmp",
+            NameStyle::DecoyWords | NameStyle::Plausible => "tmp",
         }
     }
 
@@ -121,6 +123,20 @@ impl NameGenerator {
                 }
                 name
             }
+            // Маскируется под обычный прикладной код, а не под мусор:
+            // классы — `NounSuffix` (`TextureCache`), члены — `verbNoun`
+            // (`resolveToken`) camelCase.
+            NameStyle::Plausible => {
+                let noun = PLAUSIBLE_NOUN[self.rng.below(PLAUSIBLE_NOUN.len() as u64) as usize];
+                if self.avoid_class {
+                    let suffix =
+                        PLAUSIBLE_SUFFIX[self.rng.below(PLAUSIBLE_SUFFIX.len() as u64) as usize];
+                    format!("{noun}{suffix}")
+                } else {
+                    let verb = PLAUSIBLE_VERB[self.rng.below(PLAUSIBLE_VERB.len() as u64) as usize];
+                    format!("{verb}{noun}")
+                }
+            }
         }
     }
 
@@ -162,54 +178,5 @@ fn capitalize(s: &str) -> String {
     match chars.next() {
         Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
         None => String::new(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #![allow(clippy::expect_used, clippy::unwrap_used)]
-    use super::alphabet::{AVOID_MEMBER, KEYWORDS};
-    use super::*;
-
-    #[test]
-    fn names_are_unique_and_valid() {
-        let mut names = NameGenerator::new(Rng::from_seed(1), NameStyle::ShortLatin);
-        let mut seen = HashSet::new();
-        for _ in 0..500 {
-            let name = names.next_name();
-            assert!(seen.insert(name.clone()), "повтор имени {name}");
-            assert!(!KEYWORDS.contains(&name.as_str()));
-            assert!(name.starts_with(|c: char| c.is_ascii_alphabetic()));
-        }
-    }
-
-    #[test]
-    fn avoids_reserved_member_names() {
-        let mut names = NameGenerator::new(Rng::from_seed(2), NameStyle::DecoyWords);
-        for _ in 0..500 {
-            let name = names.next_name();
-            assert!(!AVOID_MEMBER.contains(&name.as_str()));
-        }
-    }
-
-    #[test]
-    fn unicode_style_produces_identifier_valid_names() {
-        let mut names = NameGenerator::new(Rng::from_seed(3), NameStyle::Unicode);
-        for _ in 0..100 {
-            let name = names.next_name();
-            assert!(
-                name.chars()
-                    .all(|c| c.is_alphanumeric() || c == '_' || c == '$')
-            );
-        }
-    }
-
-    #[test]
-    fn reserved_names_never_reissued() {
-        let mut names = NameGenerator::new(Rng::from_seed(4), NameStyle::ShortLatin);
-        names.reserve("abc");
-        for _ in 0..300 {
-            assert_ne!(names.next_name(), "abc");
-        }
     }
 }

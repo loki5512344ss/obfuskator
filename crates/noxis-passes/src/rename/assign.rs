@@ -180,6 +180,7 @@ pub(super) fn generate_packages(cfg: &Config, rng: &mut Rng) -> Vec<String> {
     let style = match cfg.rename.class_style {
         NameStyle::Unicode => NameStyle::Unicode,
         NameStyle::IlO0 => NameStyle::IlO0,
+        NameStyle::Plausible => NameStyle::Plausible,
         _ => NameStyle::MixedLatin,
     };
     let mut names = NameGenerator::new(rng.clone(), style).for_classes();

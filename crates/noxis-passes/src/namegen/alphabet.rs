@@ -117,3 +117,40 @@ pub(super) const DECOY_RIGHT: &[&str] = &[
     "mirror", "lantern", "harbor", "ember", "shadow", "quarry", "meadow", "cipher", "anchor",
     "ripple",
 ];
+
+/// Стиль `Plausible`: домен-нейтральные существительные для классов/полей —
+/// похожи на обычный прикладной код, не привязаны к конкретному проекту.
+pub(super) const PLAUSIBLE_NOUN: &[&str] = &[
+    "Texture", "Event", "State", "Render", "Asset", "Config", "Session", "Cache", "Buffer",
+    "Socket", "Stream", "Widget", "Layout", "Theme", "Profile", "Metric", "Token", "Handle",
+    "Context", "Registry", "Request", "Response", "Payload", "Resource", "Snapshot", "Pipeline",
+    "Queue", "Slot", "Frame", "Entry",
+];
+/// Суффиксы ролей для классов (`NounSuffix`, напр. `TextureCache`).
+pub(super) const PLAUSIBLE_SUFFIX: &[&str] = &[
+    "Manager",
+    "Handler",
+    "Service",
+    "Provider",
+    "Factory",
+    "Builder",
+    "Cache",
+    "Store",
+    "Loader",
+    "Parser",
+    "Worker",
+    "Controller",
+    "Adapter",
+    "Wrapper",
+    "Registry",
+    "Resolver",
+    "Validator",
+    "Processor",
+    "Context",
+    "Listener",
+];
+/// Глаголы для методов/полей (`verbNoun`, напр. `resolveToken`).
+pub(super) const PLAUSIBLE_VERB: &[&str] = &[
+    "get", "set", "update", "process", "handle", "compute", "resolve", "load", "build", "parse",
+    "fetch", "apply", "validate", "clear", "reset", "sync", "flush", "bind", "attach", "detach",
+];
