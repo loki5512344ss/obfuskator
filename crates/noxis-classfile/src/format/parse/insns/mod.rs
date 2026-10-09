@@ -1,9 +1,8 @@
-//! `Instruction` backend'а → [`Insn`](crate::insn::Insn) нашего IR.
+//! Backend `Instruction` → [`Insn`](crate::insn::Insn) of our IR.
 //!
-//! Смещения ветвлений приходят из backend'а (абсолютные для `if*`/`goto`,
-//! относительные от начала инструкции для `switch`), поэтому конвертация
-//! принимает резолвер смещения в [`Label`](crate::insn::Label) — метки
-//! назначает вызывающий код.
+//! Branch offsets come from the backend (absolute for `if*`/`goto`, relative to
+//! the instruction start for `switch`), so conversion takes a resolver from an
+//! offset to a [`Label`](crate::insn::Label) — the calling code assigns labels.
 
 mod basic;
 mod flow;
@@ -15,10 +14,10 @@ use ristretto_classfile::attributes::Instruction;
 use crate::error::ClassfileError;
 use crate::insn::{Insn, Label};
 
-/// Резолвит абсолютное смещение байткода в метку.
+/// Resolves an absolute bytecode offset into a label.
 pub(super) type Resolver<'a> = dyn Fn(u16) -> Result<Label, ClassfileError> + 'a;
 
-/// Конвертировать одну инструкцию. `index` — её номер в теле метода (нужно `switch`).
+/// Convert one instruction. `index` — its number in the method body (`switch` needs it).
 pub(super) fn convert(
     instruction: &Instruction,
     index: u16,

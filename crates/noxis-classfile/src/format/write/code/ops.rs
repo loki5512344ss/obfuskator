@@ -1,4 +1,4 @@
-//! Операнды: константы, арифметика, массивы, вызовы.
+//! Operands: constants, arithmetic, arrays, calls.
 
 use ristretto_classfile::attributes::{ArrayType, Instruction as RtInsn};
 
@@ -6,7 +6,7 @@ use super::super::pool::Pool;
 use crate::error::ClassfileError;
 use crate::insn::{Arith, ArrayKind, Const, Convert, InvokeKind, Prim};
 
-/// Константа: короткие формы (`iconst`, `bipush`) + `ldc_w`/`ldc2_w` через пул.
+/// A constant: short forms (`iconst`, `bipush`) + `ldc_w`/`ldc2_w` through the pool.
 pub(super) fn int_const(value: &Const, pool: &mut Pool) -> Result<RtInsn, ClassfileError> {
     Ok(match value {
         Const::Int(v) => match *v {
@@ -188,7 +188,7 @@ pub(super) fn invoke(
     })
 }
 
-/// Байт `count` для `invokeinterface`: слоты аргументов + `objectref`.
+/// The `count` byte for `invokeinterface`: argument slots + `objectref`.
 fn arg_count(descriptor: &str) -> Result<u8, ClassfileError> {
     let params = descriptor
         .split_once('(')
@@ -229,7 +229,7 @@ fn arg_count(descriptor: &str) -> Result<u8, ClassfileError> {
         .map_err(|_| ClassfileError::Write(format!("слишком много аргументов в {descriptor}")))
 }
 
-/// Пропустить символы до разделителя (включительно); `false` — строка кончилась.
+/// Skip characters up to the separator (inclusive); `false` — the string ended.
 fn skip_to(chars: &mut std::str::Chars<'_>, end: char) -> bool {
     for char in chars {
         if char == end {

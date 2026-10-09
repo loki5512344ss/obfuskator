@@ -1,12 +1,12 @@
-//! `StackMapTable`: представление фреймов и вычисление после трансформаций.
+//! `StackMapTable`: frame representation and computation after transformations.
 //!
-//! Фреймы — самая дорогая часть любого обфускатора на Rust: JVM-верификатор
-//! (class version ≥ 50) требует точного `StackMapTable`, иначе класс не грузится.
-//! Варианты реализации и их цены — `docs/stack.md`.
+//! Frames are the most expensive part of any Rust obfuscator: the JVM verifier
+//! (class version ≥ 50) demands an exact `StackMapTable`, or the class won't load.
+//! Implementation options and their costs — `docs/stack.md`.
 //!
-//! Метод: CFG по меткам → worklist с типами (`xfer`) → слияние LUB (`merge`)
-//! → эмиссия компактных кадров (`emit`). Байтовые смещения берутся тем же
-//! преобразованием, что использует writer, — иначе кадры разъедутся с байтами.
+//! Method: CFG over labels → worklist with types (`xfer`) → LUB merge (`merge`)
+//! → emit compact frames (`emit`). Byte offsets come from the same encoding the
+//! writer uses — otherwise frames would drift apart from the bytes.
 
 mod emit;
 mod flow;
@@ -27,7 +27,7 @@ pub use merge::Hierarchy;
 use merge::Merger;
 use xfer::{State, transfer};
 
-/// Тип верификации из JVMS §4.10.1.
+/// A verification type from JVMS §4.10.1.
 #[derive(Debug, Clone, PartialEq)]
 pub enum VerificationType {
     Top,
@@ -37,14 +37,14 @@ pub enum VerificationType {
     Long,
     Null,
     UninitializedThis,
-    /// Внутреннее имя класса (`java/lang/Object`) или дескриптор массива.
+    /// The class's internal name (`java/lang/Object`) or an array descriptor.
     Object(String),
-    /// Байтовое смещение инструкции `new`.
+    /// The byte offset of the `new` instruction.
     Uninitialized(u16),
 }
 
 impl VerificationType {
-    /// Тип, соответствующий примитиву.
+    /// The type matching a primitive.
     pub fn of_prim(p: Prim) -> Self {
         match p {
             Prim::Int => VerificationType::Integer,
@@ -55,7 +55,7 @@ impl VerificationType {
     }
 }
 
-/// Запись `StackMapTable` (JVMS §4.7.4).
+/// A `StackMapTable` entry (JVMS §4.7.4).
 #[derive(Debug, Clone, PartialEq)]
 pub enum StackMapFrame {
     Same {
@@ -80,10 +80,11 @@ pub enum StackMapFrame {
     },
 }
 
-/// Вычислить фреймы для тела метода после всех трансформаций.
+/// Compute the frames for a method body after all transformations.
 ///
-/// Кадры нужны только классам версии ≥ 50; `jsr`/`ret` отвергаются (такие
-/// классы старше и кадры им не нужны). Иерархия — для LUB ссылочных типов.
+/// Frames are needed only for version ≥ 50 classes; `jsr`/`ret` are rejected
+/// (such classes are older and need no frames). The hierarchy is for the LUB of
+/// reference types.
 pub fn compute_frames(
     class: &str,
     method: &Method,
@@ -112,7 +113,7 @@ pub fn compute_frames(
     emit::emit_frames(&states, &targets, &initial.locals, &merger)
 }
 
-/// Байтовое смещение каждой инструкции — тем же кодированием, что в writer'е.
+/// The byte offset of each instruction — using the same encoding as the writer.
 fn layout(
     bare: &[&Insn],
     labels: &BTreeMap<Label, u32>,
@@ -144,7 +145,7 @@ fn layout(
         .collect()
 }
 
-/// Основной цикл: состояния текут по рёбрам CFG до неподвижной точки.
+/// Main loop: states flow along CFG edges to a fixed point.
 fn run_worklist(
     merger: &Merger<'_>,
     bare: &[&Insn],
@@ -187,7 +188,7 @@ fn run_worklist(
     Ok(())
 }
 
-/// Влить состояние в инструкцию; `true` — изменилось, продолжить обход.
+/// Merge a state into an instruction; `true` — changed, keep walking.
 fn flow_into(
     merger: &Merger<'_>,
     states: &mut [Option<State>],
@@ -218,8 +219,8 @@ fn flow_into(
     Ok(())
 }
 
-/// Рёбра CFG без исключений: продолжение + цели переходов.
-/// Тип исключения на входе в handler (`catch-all` — любое throwable).
+/// CFG edges without exceptions: fallthrough + branch targets.
+/// The exception type at a handler's entry (`catch-all` — any throwable).
 fn catch_type(catch: &Option<String>) -> VerificationType {
     match catch {
         Some(name) => VerificationType::Object(name.clone()),

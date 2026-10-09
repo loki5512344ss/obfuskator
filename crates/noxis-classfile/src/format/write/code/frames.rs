@@ -1,9 +1,9 @@
-//! Кадры `StackMapTable` при записи: вариант в вариант, дельты по инструкциям.
+//! `StackMapTable` frames on write: variant to variant, deltas per instruction.
 //!
-//! Наш IR хранит `offset_delta` в номерах инструкций; backend при `to_bytes`
-//! сам пересчитает их в байты. Компактный формат (`Same`/`SameLocals`) годен
-//! только когда **байтовая** дельта ≤ 63 — иначе нужен расширенный вариант.
-//! Выбор делаем по байтовой дельте: байты считаются от layout текущего метода.
+//! Our IR stores `offset_delta` in instruction numbers; the backend recomputes
+//! them into bytes on `to_bytes`. The compact form (`Same`/`SameLocals`) is valid
+//! only when the **byte** delta is ≤ 63 — otherwise the extended form is needed.
+//! We choose by the byte delta: bytes are computed from the current method's layout.
 
 use ristretto_classfile::attributes::{StackFrame as RtFrame, VerificationType as RtType};
 
@@ -11,10 +11,10 @@ use super::super::pool::Pool;
 use crate::error::ClassfileError;
 use crate::format::{StackMapFrame, VerificationType};
 
-/// Байтовое смещение начала инструкции (для расчёта дельт кадров).
+/// The byte offset of an instruction's start (for computing frame deltas).
 type ByteOf<'a> = &'a (dyn Fn(u32) -> Result<u16, ClassfileError> + 'a);
 
-/// Кадры IR → кадры backend'а (индексные дельты — как есть).
+/// IR frames → backend frames (index deltas — as-is).
 pub(super) fn convert_frames(
     frames: &[StackMapFrame],
     pool: &mut Pool,
@@ -32,7 +32,7 @@ pub(super) fn convert_frames(
             last_instruction + delta + 1
         };
         let byte = byte_of(instruction)?;
-        // Байтовая дельта относительно конца предыдущего кадра.
+        // Byte delta relative to the end of the previous frame.
         let byte_delta = if first {
             byte
         } else {
@@ -48,7 +48,7 @@ pub(super) fn convert_frames(
     Ok(out)
 }
 
-/// `byte_delta` — истинная байтовая дельта; компактный вид годен лишь при ≤ 63.
+/// `byte_delta` is the true byte delta; the compact form is valid only when ≤ 63.
 fn build_frame(
     frame: &StackMapFrame,
     pool: &mut Pool,
@@ -60,8 +60,8 @@ fn build_frame(
     Ok(match frame {
         StackMapFrame::Same { .. } => {
             if byte_delta <= 63 {
-                // Backend при verify()/to_bytes читает frame_type как дельту по
-                // ИНСТРУКЦИЯМ и сам пересчитает её в байты (≤ 63 — влезает).
+                // The backend, in verify()/to_bytes, reads frame_type as a delta by
+                // INSTRUCTION and recomputes it into bytes itself (≤ 63 fits).
                 RtFrame::SameFrame {
                     frame_type: delta as u8,
                 }

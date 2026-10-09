@@ -1,10 +1,10 @@
-//! Референсы constant pool: `Fieldref`/`Methodref`/`MethodHandle`/`Dynamic`.
+//! Constant-pool references: `Fieldref`/`Methodref`/`MethodHandle`/`Dynamic`.
 //!
-//! Это `impl Pool` из [`super`]; вынесено отдельно, чтобы материнский файл
-//! держался в лимите структуры. Каждый билдер мемоизирован по семантическому
-//! ключу (owner/name/descriptor/…) — одинаковая ссылка всегда получает один
-//! индекс, а пул не раздувается дублями (раздувание иначе расширяет `ldc`
-//! в `ldc_w` и меняет длину кода при переносе).
+//! This is an `impl Pool` from [`super`], split out so the parent file stays
+//! within the structure limit. Each builder is memoized by a semantic key
+//! (owner/name/descriptor/…) — an identical reference always gets the same index,
+//! and the pool doesn't bloat with duplicates (bloat would otherwise widen `ldc`
+//! into `ldc_w` and change code length on relocation).
 
 use ristretto_classfile::{Constant, ReferenceKind};
 

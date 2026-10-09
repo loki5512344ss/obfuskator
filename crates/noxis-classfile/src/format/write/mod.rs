@@ -1,7 +1,7 @@
-//! Наш IR → байты `.class` через backend `ristretto_classfile`.
+//! Our IR → `.class` bytes through the `ristretto_classfile` backend.
 //!
-//! Пул собирается с нуля детерминированным обходом; backend сам пересчитывает
-//! номера инструкций в байтовые смещения и проверяет результат (`verify`).
+//! The pool is built from scratch by a deterministic walk; the backend recomputes
+//! instruction numbers into byte offsets and verifies the result (`verify`).
 
 mod attrs;
 pub(crate) mod code;
@@ -16,7 +16,7 @@ use ristretto_classfile::{
 use crate::error::ClassfileError;
 use crate::model::{ClassFile, Field, Method};
 
-/// Класс нашего IR → байты `.class`.
+/// Our IR class → `.class` bytes.
 pub(crate) fn write_class(class: &ClassFile) -> Result<Vec<u8>, ClassfileError> {
     let mut pool = pool::Pool::new();
     let version = RtVersion::from(class.version.major, class.version.minor)

@@ -1,9 +1,9 @@
-//! Backend `ristretto_classfile` → наш IR: пул, инструкции, тела методов.
+//! Backend `ristretto_classfile` → our IR: pool, instructions, method bodies.
 //!
-//! Пока ниоткуда не подключён (P1): `format` вернёт `Unimplemented`, пока не
-//! будут готовы `parse`/`write` классового уровня поверх этих конвертеров.
-//! Дерево уже разбито по ответственностям, чтобы подключение было одним
-//! `mod parse` без рефакторинга.
+//! Not wired in from anywhere yet (P1): `format` returns `Unimplemented` until
+//! class-level `parse`/`write` are ready on top of these converters. The tree
+//! is already split by responsibility so wiring is a single `mod parse` with no
+//! refactoring.
 
 pub(super) mod attrs;
 pub(super) mod class;

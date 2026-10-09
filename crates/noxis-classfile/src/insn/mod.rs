@@ -1,7 +1,7 @@
-//! Инструкции IR: смещения отсутствуют, ветвления адресуют [`Label`].
+//! IR instructions: no offsets, branches address a [`Label`].
 //!
-//! Это принципиально: любой пасс, меняющий порядок/длину инструкций, не обязан
-//! пересчитывать jump-офсеты — это делает writer один раз в конце пайплайна.
+//! This is fundamental: any pass that changes instruction order/length need not
+//! recompute jump offsets — the writer does that once at the end of the pipeline.
 
 mod kinds;
 
@@ -9,32 +9,32 @@ pub use kinds::{
     Arith, ArrayKind, BranchCond, Cond, Const, Convert, InvokeKind, Label, Prim, SlotKind,
 };
 
-/// Мнемоника одной инструкции.
+/// Mnemonic of a single instruction.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Insn {
-    /// Маркер метки. Ветвления указывают на [`Label`], writer вычисляет смещения.
+    /// Label marker. Branches point at a [`Label`]; the writer computes offsets.
     Mark(Label),
     Nop,
     AconstNull,
     Const(Const),
-    /// Загрузка локальной переменной (`iload`, `aload`, ...).
+    /// Load a local variable (`iload`, `aload`, ...).
     Load {
         slot: u16,
         kind: SlotKind,
     },
-    /// Сохранение локальной переменной.
+    /// Store a local variable.
     Store {
         slot: u16,
         kind: SlotKind,
     },
-    /// `iinc` — увеличение локальной переменной на константу.
+    /// `iinc` — increase a local variable by a constant.
     Iinc {
         index: u16,
         delta: i32,
     },
-    /// Загрузка элемента массива.
+    /// Load an array element.
     ArrayLoad(ArrayKind),
-    /// Сохранение элемента массива.
+    /// Store an array element.
     ArrayStore(ArrayKind),
     Pop,
     Pop2,
@@ -45,23 +45,23 @@ pub enum Insn {
     Dup2X1,
     Dup2X2,
     Swap,
-    /// `iadd`, `lmul`, `lneg`, ... — тип + операция.
+    /// `iadd`, `lmul`, `lneg`, ... — type + operation.
     Binary {
         prim: Prim,
         op: Arith,
     },
-    /// Сравнение длин (`lcmp`) и плавающих (`fcmpl`/`fcmpg`).
+    /// Comparison of longs (`lcmp`) and floats (`fcmpl`/`fcmpg`).
     Cmp {
         prim: Prim,
         nan_great: bool,
     },
-    /// Конверсия типов (`i2l`, `d2f`, ...).
+    /// Type conversion (`i2l`, `d2f`, ...).
     Convert(Convert),
     Branch(BranchCond, Label),
     Goto(Label),
-    /// `jsr` — вызов подпрограммы (только классы версии ≤ 50).
+    /// `jsr` — subroutine call (only version ≤ 50 classes).
     Jsr(Label),
-    /// `ret` — возврат из подпрограммы (`jsr`/`ret` парны).
+    /// `ret` — return from a subroutine (`jsr`/`ret` come in pairs).
     Ret(u16),
     TableSwitch {
         default: Label,
@@ -73,9 +73,9 @@ pub enum Insn {
         default: Label,
         pairs: Vec<(i32, Label)>,
     },
-    /// `return`/`ireturn`/...; `None` — пустой возврат.
+    /// `return`/`ireturn`/...; `None` — void return.
     Return(Option<Prim>),
-    /// `areturn` — возврат ссылки (у [`Prim`] нет ссылочного типа).
+    /// `areturn` — return a reference ([`Prim`] has no reference type).
     AReturn,
     GetStatic {
         owner: String,
@@ -112,7 +112,7 @@ pub enum Insn {
     New(String),
     NewArray(ArrayKind),
     ANewArray(String),
-    /// `multianewarray` — массив любого измерения; `dims` — сколько измерений со стека.
+    /// `multianewarray` — array of any dimension; `dims` — how many dimensions from the stack.
     MultiANewArray {
         descriptor: String,
         dims: u8,
@@ -126,7 +126,7 @@ pub enum Insn {
 }
 
 impl Insn {
-    /// Метки, на которые ссылается инструкция (для построения CFG).
+    /// Labels the instruction references (for building the CFG).
     pub fn targets(&self) -> Vec<Label> {
         match self {
             Insn::Branch(_, label) | Insn::Goto(label) | Insn::Jsr(label) => vec![*label],
@@ -154,7 +154,7 @@ impl Insn {
         }
     }
 
-    /// Незакодированный переход (для вставки opaque-предикатов и перестройки CFG).
+    /// An encoded jump target (for inserting opaque predicates and rebuilding the CFG).
     pub fn branch_target_mut(&mut self) -> Option<&mut Label> {
         match self {
             Insn::Branch(_, label) | Insn::Goto(label) => Some(label),

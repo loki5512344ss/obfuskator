@@ -1,4 +1,4 @@
-//! Тесты генератора имён: уникальность, валидность, форма по стилю.
+//! Name generator tests: uniqueness, validity, per-style shape.
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
@@ -15,7 +15,7 @@ fn names_are_unique_and_valid() {
     let mut seen = HashSet::new();
     for _ in 0..500 {
         let name = names.next_name();
-        assert!(seen.insert(name.clone()), "повтор имени {name}");
+        assert!(seen.insert(name.clone()), "duplicate name {name}");
         assert!(!KEYWORDS.contains(&name.as_str()));
         assert!(name.starts_with(|c: char| c.is_ascii_alphabetic()));
     }
@@ -57,7 +57,7 @@ fn plausible_class_names_look_like_noun_suffix() {
     for _ in 0..50 {
         let name = names.next_name();
         assert!(name.starts_with(|c: char| c.is_ascii_uppercase()), "{name}");
-        // Два слова подряд слиплись в CamelCase без разделителей.
+        // Two words run together in CamelCase with no separator.
         assert!(
             name.chars().filter(|c| c.is_ascii_uppercase()).count() >= 2,
             "{name}"

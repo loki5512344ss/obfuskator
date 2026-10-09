@@ -1,12 +1,12 @@
-//! Слияние типов (LUB) и разбор дескрипторов.
+//! Type merging (LUB) and descriptor parsing.
 //!
-//! Решётка: `Top` — «пусто» (берётся сосед), `Null` впитывается в ссылку,
-//! одинаковые — сами в себя, ссылки — наименьший общий предок по иерархии.
-//! Несочетаемые инициализированные типы (`int` vs ссылка после `astore`
-//! в handler'е) дают `Top`, как обрезанные кадры `javac`: `Top` в кадре
-//! принимает любое фактическое значение, поэтому это всегда sound.
-//! Исключение — неинициализированные типы: их слияние означает сломанный
-//! поток конструирования, здесь честная ошибка, а не молчаливый `Top`.
+//! The lattice: `Top` is "empty" (the neighbour wins), `Null` is absorbed into a
+//! reference, equal types map to themselves, references take the least upper
+//! bound over the hierarchy. Incompatible initialized types (`int` vs a reference
+//! after `astore` in a handler) yield `Top`, like `javac`'s truncated frames: a
+//! `Top` in a frame accepts any actual value, so this is always sound. The
+//! exception is uninitialized types: merging them means a broken construction
+//! flow — here an honest error, not a silent `Top`.
 
 pub(super) mod descs;
 
@@ -17,13 +17,13 @@ use crate::model::Method;
 
 use descs::write_local;
 
-/// Иерархия классов для LUB: достаточно цепочки суперклассов.
+/// The class hierarchy for LUB: the superclass chain is enough.
 pub trait Hierarchy {
-    /// Прямой суперкласс (`None` — `java/lang/Object` или неизвестный).
+    /// The direct superclass (`None` — `java/lang/Object` or unknown).
     fn superclass(&self, class: &str) -> Option<String>;
 }
 
-/// Контекст слияния: имена для ошибок + иерархия для LCA.
+/// Merge context: names for errors + hierarchy for LCA.
 pub(super) struct Merger<'h> {
     pub class: String,
     pub method: String,
@@ -38,7 +38,7 @@ impl Merger<'_> {
         }
     }
 
-    /// Влить входящее состояние; `true` — слот изменился.
+    /// Merge an incoming state; `true` — the slot changed.
     pub fn merge_into(
         &self,
         slot: &mut Option<State>,
@@ -61,7 +61,7 @@ impl Merger<'_> {
         }
     }
 
-    /// Начальное состояние: параметры (+ `this`) поверх `Top`.
+    /// The initial state: parameters (+ `this`) over `Top`.
     pub fn initial(&self, method: &Method, max_locals: u16) -> Result<State, ClassfileError> {
         let is_static = method.access_flags & 0x0008 != 0;
         let (params, _) =
@@ -127,19 +127,19 @@ impl Merger<'_> {
                 Ok(first.clone())
             }
             (Object(a), Object(b)) => Ok(Object(self.common_superclass(a, b))),
-            // Одинаковые уже разобраны выше; здесь неинициализированные
-            // всегда разные — это сломанный поток конструирования.
+            // Equal ones are handled above; here uninitialized are always
+            // different — that's a broken construction flow.
             (VerificationType::UninitializedThis | VerificationType::Uninitialized(_), _)
             | (_, VerificationType::UninitializedThis | VerificationType::Uninitialized(_)) => {
                 Err(self.invalid("слияние неинициализированных типов"))
             }
-            // Несочетаемые инициализированные (например, `int` из тела `try`
-            // и `Throwable` из handler'а в одном слоте): `Top`, как у `javac`.
+            // Incompatible initialized (e.g. `int` from the `try` body and
+            // `Throwable` from a handler in one slot): `Top`, like `javac`.
             _ => Ok(Top),
         }
     }
 
-    /// Наименьший общий предок: подъём по цепочкам, запасной — `Object`.
+    /// Least common ancestor: climb the chains, fallback — `Object`.
     fn common_superclass(&self, first: &str, second: &str) -> String {
         if first == second {
             return first.to_string();
@@ -176,7 +176,7 @@ impl Merger<'_> {
         "java/lang/Object".to_string()
     }
 
-    /// LCA массивов: та же размерность + LCA элементов, иначе `Object`.
+    /// Arrays' LCA: same dimensionality + element LCA, otherwise `Object`.
     fn array_lca(&self, first: &str, second: &str) -> String {
         let (dims_a, elem_a) = descs::split_array(first).unwrap_or((0, first));
         let (dims_b, elem_b) = descs::split_array(second).unwrap_or((0, second));

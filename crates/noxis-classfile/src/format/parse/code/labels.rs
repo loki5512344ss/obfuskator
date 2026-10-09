@@ -1,7 +1,7 @@
-//! Метки тела метода: где обязаны стоять и как резолвятся.
+//! Method-body labels: where they must stand and how they resolve.
 //!
-//! Backend нумерует инструкции по порядку — метки ставятся прямо на номера,
-//! без байтовых смещений.
+//! The backend numbers instructions in order — labels are placed directly on the
+//! numbers, without byte offsets.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -11,10 +11,10 @@ use ristretto_classfile::attributes::{ExceptionTableEntry, Instruction};
 use crate::error::ClassfileError;
 use crate::insn::Label;
 
-/// Номера инструкций, на которых обязана стоять метка.
+/// Instruction numbers that must carry a label.
 ///
-/// `extra` — позиции отладочных таблиц (уже номерами): вставки пассов
-/// не должны оставлять их без меток.
+/// `extra` — debug-table positions (already as numbers): pass insertions must
+/// not leave them without a label.
 pub(super) fn label_indexes(
     code: &[Instruction],
     exception_table: &[ExceptionTableEntry],
@@ -36,7 +36,7 @@ pub(super) fn label_indexes(
     Ok(indexes)
 }
 
-/// Цели ветвлений backend'а: для `if*`/`goto` — абсолютный номер, для `switch` — дельта.
+/// Backend branch targets: for `if*`/`goto` an absolute number, for `switch` a delta.
 fn branch_indexes(instruction: &Instruction, index: u16) -> Vec<i32> {
     let base = i32::from(index);
     match instruction {
@@ -73,7 +73,7 @@ fn once(value: i32) -> std::iter::Once<i32> {
     std::iter::once(value)
 }
 
-/// Превратить отсортированный набор номеров в последовательные метки.
+/// Turn a sorted set of numbers into sequential labels.
 pub(super) fn assign(indexes: &BTreeSet<u32>) -> BTreeMap<u32, Label> {
     indexes
         .iter()
@@ -82,7 +82,7 @@ pub(super) fn assign(indexes: &BTreeSet<u32>) -> BTreeMap<u32, Label> {
         .collect()
 }
 
-/// Метка для номера инструкции.
+/// The label for an instruction number.
 pub(super) fn lookup(labels: &BTreeMap<u32, Label>, index: u16) -> Result<Label, ClassfileError> {
     labels
         .get(&u32::from(index))
@@ -90,7 +90,7 @@ pub(super) fn lookup(labels: &BTreeMap<u32, Label>, index: u16) -> Result<Label,
         .ok_or_else(|| ClassfileError::Parse(format!("нет метки для инструкции {index}")))
 }
 
-/// Позиции отладочных таблиц, которым нужны метки.
+/// Debug-table positions that need labels.
 pub(super) fn collect_debug_labels(
     attributes: &[RtAttr],
     starts: &[u16],
@@ -122,7 +122,7 @@ pub(super) fn collect_debug_labels(
     Ok(())
 }
 
-/// Байт → номер инструкции (только границы инструкций).
+/// Byte → instruction number (instruction boundaries only).
 pub(super) fn byte_to_index(starts: &[u16], byte: u16) -> Result<u32, ClassfileError> {
     starts
         .iter()
@@ -131,7 +131,7 @@ pub(super) fn byte_to_index(starts: &[u16], byte: u16) -> Result<u32, ClassfileE
         .ok_or_else(|| ClassfileError::Parse(format!("смещение {byte} мимо инструкции")))
 }
 
-/// Конец диапазона `[start, start+length)`: индекс за концом.
+/// End of the range `[start, start+length)`: the index past the end.
 fn end_index(
     starts: &[u16],
     start: u16,
@@ -148,7 +148,7 @@ fn end_index(
     byte_to_index(starts, end)
 }
 
-/// Метка для байтового смещения отладочной таблицы.
+/// The label for a debug table's byte offset.
 pub(super) fn resolve_byte(
     labels: &BTreeMap<u32, Label>,
     starts: &[u16],
@@ -161,7 +161,7 @@ pub(super) fn resolve_byte(
         .ok_or_else(|| ClassfileError::Parse(format!("нет метки для смещения {byte}")))
 }
 
-/// Метка конца диапазона отладочной таблицы.
+/// The end label of a debug table's range.
 pub(super) fn resolve_end(
     labels: &BTreeMap<u32, Label>,
     starts: &[u16],

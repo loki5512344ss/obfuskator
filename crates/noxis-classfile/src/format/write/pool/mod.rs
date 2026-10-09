@@ -1,15 +1,15 @@
-//! Сборка constant pool при записи: строки нашего IR → индексы backend'а.
+//! Building the constant pool on write: our IR strings → backend indices.
 //!
-//! Пул строится с нуля детерминированным обходом (классы, поля, методы,
-//! атрибуты, код), поэтому одинаковый IR даёт одинаковые байты. Индексы
-//! `Raw`-атрибутов при этом не переносятся — см. `super::attrs`.
+//! The pool is built from scratch by a deterministic walk (classes, fields,
+//! methods, attributes, code), so identical IR yields identical bytes. `Raw`
+//! attribute indices are not carried over — see `super::attrs`.
 //!
-//! Backend не дедуплицирует: `add_*` всегда толкает новый элемент. Кэшируем
-//! семантические ключи сами — иначе `LocalVariableTable` и
-//! `LocalVariableTypeTable` получат разные `name_index` для одного имени, и
-//! HotSpot отвергнет класс (`LVTT entry ... does not match any LVT entry`).
-//! Порядок обхода детерминирован, поэтому кэш меняет только компактность пула.
-//! Референсы (поле/метод/хендл/динамик) — в [`refs`].
+//! The backend does not deduplicate: `add_*` always pushes a new entry. We cache
+//! semantic keys ourselves — otherwise `LocalVariableTable` and
+//! `LocalVariableTypeTable` would get different `name_index` values for the same
+//! name, and HotSpot would reject the class (`LVTT entry ... does not match any
+//! LVT entry`). The walk order is deterministic, so the cache only changes pool
+//! compactness. References (field/method/handle/dynamic) live in [`refs`].
 
 use std::collections::HashMap;
 
@@ -20,7 +20,7 @@ use crate::insn::Const;
 
 mod refs;
 
-/// Строитель пула; живёт только внутри одного `write`.
+/// The pool builder; lives only within a single `write`.
 pub(crate) struct Pool {
     pub(super) pool: ConstantPool<'static>,
     pub(super) utf8s: HashMap<String, u16>,
@@ -68,8 +68,8 @@ impl Pool {
         if let Some(&index) = self.name_types.get(&key) {
             return Ok(index);
         }
-        // Собираем из примитивов, а не `add_name_and_type`: последний толкает
-        // собственные `Utf8`-строки мимо нашего кэша (дубли в пуле).
+        // Build from primitives, not `add_name_and_type`: the latter pushes its
+        // own `Utf8` strings past our cache (pool duplicates).
         let name_index = self.utf8(name)?;
         let descriptor_index = self.utf8(descriptor)?;
         let index = self
@@ -96,7 +96,7 @@ impl Pool {
         Ok(index)
     }
 
-    /// Константа для `ldc`/`ldc2_w`; `dynamic` запрещён (только через bootstrap).
+    /// A constant for `ldc`/`ldc2_w`; `dynamic` is forbidden (bootstrap only).
     pub(super) fn constant(&mut self, value: &Const) -> Result<u16, ClassfileError> {
         match value {
             Const::Int(v) => self.pool.add_integer(*v).map_err(write_err),

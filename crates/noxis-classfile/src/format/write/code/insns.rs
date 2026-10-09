@@ -1,8 +1,8 @@
-//! Наш [`Insn`](crate::insn::Insn) → `Instruction` backend'а.
+//! Our [`Insn`](crate::insn::Insn) → the backend's `Instruction`.
 //!
-//! Обратная сторона `super::super::parse::insns`: метки резолвятся в
-//! абсолютные номера инструкций (`switch` — в дельты от себя), константы
-//! и ссылки уходят в пул через [`Pool`](super::super::pool::Pool).
+//! The reverse side of `super::super::parse::insns`: labels resolve into
+//! absolute instruction numbers (`switch` — into deltas from itself), constants
+//! and references go to the pool via [`Pool`](super::super::pool::Pool).
 
 use indexmap::IndexMap;
 use ristretto_classfile::attributes::{Instruction as RtInsn, LookupSwitch, TableSwitch};
@@ -13,9 +13,9 @@ use super::{branch, delta, fit_index, ret_op};
 use crate::error::ClassfileError;
 use crate::insn::{Insn, Label, SlotKind};
 
-/// Одна инструкция IR → инструкция backend'а (`None` — маркер метки).
+/// One IR instruction → a backend instruction (`None` — a label marker).
 ///
-/// `index` — номер инструкции в методе (нужен `switch`-дельтам).
+/// `index` — the instruction's number in the method (needed for `switch` deltas).
 pub(crate) fn convert(
     insn: &Insn,
     index: u32,
@@ -178,7 +178,7 @@ fn store(slot: u16, kind: SlotKind) -> RtInsn {
     }
 }
 
-/// Короткая форма при слоте ≤255, иначе `wide`-форма.
+/// The short form when the slot is ≤255, otherwise the `wide` form.
 fn narrow(slot: u16, short: fn(u8) -> RtInsn, wide: fn(u16) -> RtInsn) -> RtInsn {
     u8::try_from(slot).map(short).unwrap_or_else(|_| wide(slot))
 }

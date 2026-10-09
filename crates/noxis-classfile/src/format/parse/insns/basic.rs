@@ -1,4 +1,4 @@
-//! Простые инструкции без ссылок на пул (кроме `ldc`) и без ветвлений.
+//! Simple instructions with no pool references (except `ldc`) and no branches.
 
 use ristretto_classfile::ConstantPool;
 use ristretto_classfile::attributes::Instruction;
@@ -7,7 +7,7 @@ use super::super::pool::const_from;
 use crate::error::ClassfileError;
 use crate::insn::{Arith, ArrayKind, Const, Convert, Insn, Prim, SlotKind};
 
-/// `Some` — инструкция покрыта, `None` — отдать следующим конвертерам.
+/// `Some` — the instruction is covered; `None` — hand it to the next converters.
 pub(super) fn convert_basic(
     instruction: &Instruction,
     pool: &ConstantPool<'_>,

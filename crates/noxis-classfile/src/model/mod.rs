@@ -1,4 +1,4 @@
-//! Структура «программы» — единица работы пайплайна.
+//! The "program" structure — the unit of work for the pipeline.
 
 pub mod builder;
 pub mod version;
@@ -8,7 +8,7 @@ pub use version::Version;
 use crate::format::StackMapFrame;
 use crate::insn::{Const, Insn, Label};
 
-/// Неизвестные/специфичные атрибуты хранятся байтами — round-trip без потерь.
+/// Unknown/specific attributes are stored as bytes — lossless round-trip.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Attribute {
     SourceFile(String),
@@ -19,26 +19,26 @@ pub enum Attribute {
     Deprecated,
     Synthetic,
     InnerClasses(Vec<InnerClass>),
-    /// `NestHost`: класс, служащий nest-хостом (JVMS §4.7.28).
+    /// `NestHost`: the class acting as nest host (JVMS §4.7.28).
     NestHost(String),
-    /// `NestMembers`: классы-члены этого nest-хоста (JVMS §4.7.29).
+    /// `NestMembers`: the member classes of this nest host (JVMS §4.7.29).
     NestMembers(Vec<String>),
-    /// `ConstantValue` поля (`static final`): значение из пула.
+    /// A field's `ConstantValue` (`static final`): a value from the pool.
     ConstantValue(Const),
-    /// `BootstrapMethods` для `invokedynamic` (лямбды): метод + аргументы.
+    /// `BootstrapMethods` for `invokedynamic` (lambdas): method + arguments.
     BootstrapMethods(Vec<BootstrapMethod>),
-    /// `EnclosingMethod`: класс и опциональный метод, содержащие локальный класс.
+    /// `EnclosingMethod`: the class and optional method enclosing a local class.
     EnclosingMethod {
         class: String,
         method: Option<(String, String)>,
     },
-    /// `MethodParameters`: имена формальных параметров (`None` — безымянный).
+    /// `MethodParameters`: formal parameter names (`None` — unnamed).
     MethodParameters(Vec<MethodParameter>),
-    /// `Record`: компоненты record-класса.
+    /// `Record`: the record class's components.
     Record(Vec<RecordComponent>),
-    /// `LocalVariableTypeTable`: сигнатуры generic-локальных (как LVT).
+    /// `LocalVariableTypeTable`: generic local signatures (like LVT).
     LocalVariableTypeTable(Vec<LocalVariableType>),
-    /// Всё остальное: имя + сырые байты `info` (осторожно с индексами пула).
+    /// Everything else: name + raw `info` bytes (careful with pool indices).
     Raw {
         name: String,
         data: Vec<u8>,
@@ -47,14 +47,14 @@ pub enum Attribute {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LineNumber {
-    /// Метка начала (байты вычисляет writer — переживает вставки пассов).
+    /// Start label (the writer computes bytes — survives pass insertions).
     pub start: Label,
     pub line: u16,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocalVariable {
-    /// Метки диапазона видимости (writer пересчитает в байты).
+    /// Visibility-range labels (the writer recomputes them into bytes).
     pub start: Label,
     pub end: Label,
     pub name: String,
@@ -70,10 +70,10 @@ pub struct InnerClass {
     pub access_flags: u16,
 }
 
-/// Один `bootstrap`-метод: ссылка вида `MethodHandle` + аргументы-константы.
+/// One `bootstrap` method: a `MethodHandle`-style reference + const arguments.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BootstrapMethod {
-    /// Номер `reference_kind` (JVMS §5.4.3.5).
+    /// The `reference_kind` number (JVMS §5.4.3.5).
     pub kind: u8,
     pub owner: String,
     pub name: String,
@@ -82,14 +82,14 @@ pub struct BootstrapMethod {
     pub args: Vec<Const>,
 }
 
-/// Формальный параметр метода (`MethodParameters`).
+/// A method's formal parameter (`MethodParameters`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct MethodParameter {
     pub name: Option<String>,
     pub access_flags: u16,
 }
 
-/// Компонент `Record`: поле record-класса с атрибутами.
+/// A `Record` component: a record class field with attributes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RecordComponent {
     pub name: String,
@@ -97,10 +97,10 @@ pub struct RecordComponent {
     pub attributes: Vec<Attribute>,
 }
 
-/// Строка `LocalVariableTypeTable` (как `LocalVariable`, но с сигнатурой).
+/// A `LocalVariableTypeTable` entry (like `LocalVariable`, but with a signature).
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocalVariableType {
-    /// Метки диапазона видимости (writer пересчитает в байты).
+    /// Visibility-range labels (the writer recomputes them into bytes).
     pub start: Label,
     pub end: Label,
     pub name: String,
@@ -126,18 +126,18 @@ pub struct Method {
 }
 
 impl Method {
-    /// `native`/`abstract` тела не имеют.
+    /// `native`/`abstract` methods have no body.
     pub fn has_code(&self) -> bool {
         self.code.is_some()
     }
 }
 
-/// Тело метода.
+/// A method body.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Code {
     pub max_stack: u16,
     pub max_locals: u16,
-    /// Маркеры меток + инструкции; ветвления указывают на [`Label`].
+    /// Label markers + instructions; branches point at a [`Label`].
     pub insns: Vec<Insn>,
     pub exception_table: Vec<ExceptionHandler>,
     pub frames: Vec<StackMapFrame>,
@@ -145,7 +145,7 @@ pub struct Code {
 }
 
 impl Code {
-    /// Все метки, объявленные в теле метода.
+    /// All labels declared in the method body.
     pub fn labels(&self) -> Vec<Label> {
         self.insns
             .iter()
@@ -163,11 +163,11 @@ pub struct ExceptionHandler {
     pub start: Label,
     pub end: Label,
     pub handler: Label,
-    /// Внутреннее имя класса или `None` для `any`.
+    /// The class's internal name, or `None` for `any`.
     pub catch_type: Option<String>,
 }
 
-/// Один `.class` в нормализованном виде.
+/// One `.class` in normalized form.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassFile {
     pub version: Version,
@@ -181,34 +181,34 @@ pub struct ClassFile {
 }
 
 impl ClassFile {
-    /// Ищет метод по имени и дескриптору.
+    /// Finds a method by name and descriptor.
     pub fn method(&self, name: &str, descriptor: &str) -> Option<&Method> {
         self.methods
             .iter()
             .find(|m| m.name == name && m.descriptor == descriptor)
     }
 
-    /// Ищет метод по имени и дескриптору (мутирующий доступ).
+    /// Finds a method by name and descriptor (mutating access).
     pub fn method_mut(&mut self, name: &str, descriptor: &str) -> Option<&mut Method> {
         self.methods
             .iter_mut()
             .find(|m| m.name == name && m.descriptor == descriptor)
     }
 
-    /// Признак `ACC_INTERFACE`.
+    /// The `ACC_INTERFACE` flag.
     pub fn is_interface(&self) -> bool {
         self.access_flags & 0x0200 != 0
     }
 }
 
-/// Ресурс внутри архива (JSON, properties, картинки, ...).
+/// A resource inside the archive (JSON, properties, images, ...).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Resource {
     pub path: String,
     pub data: Vec<u8>,
 }
 
-/// Вся входная программа: классы + ресурсы.
+/// The whole input program: classes + resources.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Program {
     pub classes: Vec<ClassFile>,
@@ -216,24 +216,24 @@ pub struct Program {
 }
 
 impl Program {
-    /// Класс по внутреннему имени (`pkg/Class`).
+    /// A class by internal name (`pkg/Class`).
     pub fn class(&self, internal_name: &str) -> Option<&ClassFile> {
         self.classes.iter().find(|c| c.this_class == internal_name)
     }
 
-    /// Класс по внутреннему имени (мутирующий доступ).
+    /// A class by internal name (mutating access).
     pub fn class_mut(&mut self, internal_name: &str) -> Option<&mut ClassFile> {
         self.classes
             .iter_mut()
             .find(|c| c.this_class == internal_name)
     }
 
-    /// Ресурс по пути внутри архива.
+    /// A resource by its path inside the archive.
     pub fn resource(&self, path: &str) -> Option<&Resource> {
         self.resources.iter().find(|r| r.path == path)
     }
 
-    /// Пустая ли программа.
+    /// Whether the program is empty.
     pub fn is_empty(&self) -> bool {
         self.classes.is_empty() && self.resources.is_empty()
     }

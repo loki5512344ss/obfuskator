@@ -1,6 +1,6 @@
-//! Версия классового файла (major/minor).
+//! Class-file version (major/minor).
 
-/// Версия классового файла.
+/// The class-file version.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Version {
     pub minor: u16,

@@ -1,4 +1,4 @@
-//! Класс целиком: backend `ClassFile` → наш [`ClassFile`](crate::model::ClassFile).
+//! The whole class: backend `ClassFile` → our [`ClassFile`](crate::model::ClassFile).
 
 use ristretto_classfile::attributes::Attribute as RtAttr;
 use ristretto_classfile::{
@@ -11,7 +11,7 @@ use super::pool::{class_name, utf8};
 use crate::error::ClassfileError;
 use crate::model::{Attribute, ClassFile, Code, Field, Method, Version};
 
-/// Разобрать байты `.class` в наш IR.
+/// Parse `.class` bytes into our IR.
 pub(crate) fn parse_class(bytes: &[u8]) -> Result<ClassFile, ClassfileError> {
     let rt = RtClass::from_bytes(bytes).map_err(|e| ClassfileError::Parse(e.to_string()))?;
     let pool = &rt.constant_pool;
@@ -99,7 +99,7 @@ fn convert_attrs(
         .collect()
 }
 
-/// Индекс суперкласса, где `0` — его отсутствие (`java/lang/Object`).
+/// The superclass index, where `0` means absent (`java/lang/Object`).
 fn optional_class(pool: &ConstantPool<'_>, index: u16) -> Result<Option<String>, ClassfileError> {
     if index == 0 {
         Ok(None)

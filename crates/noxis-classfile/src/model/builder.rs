@@ -1,8 +1,8 @@
-//! Сборка классов «с нуля»: junk-классы, рантайм-декодеры, аннотации-шум.
+//! Building classes "from scratch": junk classes, runtime decoders, noise annotations.
 
 use crate::model::{Attribute, ClassFile, Code, Field, Method, Version};
 
-/// Строитель класса без бинарного представления на входе.
+/// A class builder with no binary representation on input.
 #[derive(Debug, Clone)]
 pub struct ClassBuilder {
     version: Version,
@@ -16,8 +16,8 @@ pub struct ClassBuilder {
 }
 
 impl ClassBuilder {
-    /// Новый класс `public` с указанным суперклассом (`None` = `java/lang/Object`,
-    /// кроме самого `java/lang/Object` — у него суперкласса нет).
+    /// A new `public` class with the given superclass (`None` = `java/lang/Object`,
+    /// except for `java/lang/Object` itself — it has no superclass).
     pub fn new(this_class: impl Into<String>, super_class: Option<&str>) -> Self {
         let this_class = this_class.into();
         let super_class = match super_class {
@@ -37,25 +37,25 @@ impl ClassBuilder {
         }
     }
 
-    /// Задать версию классового файла.
+    /// Set the class-file version.
     pub fn version(mut self, version: Version) -> Self {
         self.version = version;
         self
     }
 
-    /// Задать флаги доступа (перезаписывает `ACC_PUBLIC|ACC_SUPER`).
+    /// Set access flags (overwrites `ACC_PUBLIC|ACC_SUPER`).
     pub fn access_flags(mut self, flags: u16) -> Self {
         self.access_flags = flags;
         self
     }
 
-    /// Добавить интерфейс.
+    /// Add an interface.
     pub fn interface(mut self, name: impl Into<String>) -> Self {
         self.interfaces.push(name.into());
         self
     }
 
-    /// Добавить поле.
+    /// Add a field.
     pub fn field(mut self, name: impl Into<String>, descriptor: impl Into<String>) -> Self {
         self.fields.push(Field {
             access_flags: 0x0001, // ACC_PUBLIC
@@ -66,7 +66,7 @@ impl ClassBuilder {
         self
     }
 
-    /// Добавить метод без тела (`abstract`/`native` должны выставить флаги сами).
+    /// Add a method without a body (`abstract`/`native` must set their own flags).
     pub fn method(
         mut self,
         access_flags: u16,
@@ -83,7 +83,7 @@ impl ClassBuilder {
         self
     }
 
-    /// Добавить метод с телом.
+    /// Add a method with a body.
     pub fn method_with_code(
         mut self,
         access_flags: u16,
@@ -101,13 +101,13 @@ impl ClassBuilder {
         self
     }
 
-    /// Добавить атрибут уровня класса.
+    /// Add a class-level attribute.
     pub fn attribute(mut self, attribute: Attribute) -> Self {
         self.attributes.push(attribute);
         self
     }
 
-    /// Собрать класс.
+    /// Build the class.
     pub fn build(self) -> ClassFile {
         ClassFile {
             version: self.version,
@@ -122,7 +122,7 @@ impl ClassBuilder {
     }
 }
 
-/// Пустое тело метода (`return`), для junk-методов.
+/// An empty method body (`return`), for junk methods.
 pub fn empty_code(max_locals: u16) -> Code {
     Code {
         max_stack: 0,

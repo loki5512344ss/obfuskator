@@ -1,7 +1,8 @@
 //! Compile-time gate for the project structure rules.
 //!
 //! Every crate calls [`check`] from its `build.rs`, so a file that grows past
-//! 250 lines or a directory that fills up with a fifth file fails the build.
+//! 250 *code* lines (comments and blank lines excluded) or a directory that
+//! fills up with a fifth file fails the build.
 
 mod rules;
 
@@ -49,6 +50,26 @@ mod tests {
     }
 
     #[test]
+    fn ignores_comments_and_blank_lines() {
+        // A file padded with comment and blank lines stays under the limit:
+        // only real code counts toward `MAX_FILE_LINES`.
+        let tmp = TempDir::new("comments");
+        let mut body = String::new();
+        for _ in 0..super::MAX_FILE_LINES * 2 {
+            body.push_str("// a comment line\n");
+            body.push_str("/// a doc line\n");
+            body.push_str("//! a module line\n");
+            body.push('\n');
+        }
+        for index in 0..40 {
+            body.push_str(&format!("pub fn f{index}() {{}}\n"));
+        }
+        fs::write(tmp.0.join("lib.rs"), body).expect("write");
+        let found = violations(&tmp.0);
+        assert!(found.is_empty(), "{found:?}");
+    }
+
+    #[test]
     fn rejects_directory_over_file_limit() {
         let tmp = TempDir::new("many");
         for index in 0..super::MAX_DIR_FILES + 1 {
@@ -79,8 +100,8 @@ mod tests {
 
     #[test]
     fn ignores_markdown_size_and_count() {
-        // Правила — только про Rust-код: `.md` не лимитирован ни по
-        // строкам, ни в счётчике файлов директории.
+        // Rules cover Rust code only: `.md` is bounded neither by the line
+        // limit nor by the per-directory file count.
         let tmp = TempDir::new("md");
         for index in 0..super::MAX_DIR_FILES + 3 {
             fs::write(tmp.0.join(format!("doc{index}.md")), "line\n".repeat(300)).expect("write");

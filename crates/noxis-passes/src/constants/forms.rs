@@ -1,14 +1,13 @@
-//! Схемы разбиения констант и opaque-предикаты.
+//! Constant-splitting schemes and opaque predicates.
 //!
-//! Целые константы вне `iconst`-диапазона заменяются тройками (`x^k`,
-//! `a+b`, сдвиг); opaque-предикат — всегда истинное условие с мёртвой
-//! ветвью из одного `nop` (валидно, не исполняется, ломает линейный
-//! дисассемблирование).
+//! Integer constants outside the `iconst` range are replaced by triples
+//! (`x^k`, `a+b`, shift); an opaque predicate is an always-true condition with
+//! a one-`nop` dead branch (valid, never executed, breaks linear disassembly).
 
 use noxis_classfile::{Arith, BranchCond, Cond, Const, Insn, Prim};
 use noxis_core::Rng;
 
-/// Схема разбиения (имена из `ConstantsConfig::schemes`).
+/// Splitting scheme (names from `ConstantsConfig::schemes`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Scheme {
     Xor,
@@ -27,7 +26,7 @@ impl Scheme {
     }
 }
 
-/// Разбить `int`-константу на вычисляющую её тройку.
+/// Split an `int` constant into a triple that computes it.
 pub(super) fn encrypt_int(value: i32, scheme: Scheme, rng: &mut Rng) -> Vec<Insn> {
     let (first, second) = match scheme {
         Scheme::Xor => {
@@ -50,7 +49,7 @@ pub(super) fn encrypt_int(value: i32, scheme: Scheme, rng: &mut Rng) -> Vec<Insn
     }
 }
 
-/// Разбить `long`-константу (те же три схемы на `l*`-опкодах).
+/// Split a `long` constant (the same three schemes on `l*` opcodes).
 pub(super) fn encrypt_long(value: i64, scheme: Scheme, rng: &mut Rng) -> Vec<Insn> {
     let (first, second) = match scheme {
         Scheme::Xor => {
@@ -73,7 +72,7 @@ pub(super) fn encrypt_long(value: i64, scheme: Scheme, rng: &mut Rng) -> Vec<Ins
     }
 }
 
-/// `(a, b, op)` как три инструкции.
+/// `(a, b, op)` as three instructions.
 fn binary(first: i32, second: i32, op: Arith, prim: Prim) -> Vec<Insn> {
     vec![
         Insn::Const(Const::Int(first)),
@@ -93,7 +92,7 @@ fn binary_long(first: i64, second: i64, op: Arith) -> Vec<Insn> {
     ]
 }
 
-/// `v = ((v >> 1) << 1) | (v & 1)` — работает для любых, включая отрицательные.
+/// `v = ((v >> 1) << 1) | (v & 1)` — works for any value, including negatives.
 fn shift_form(value: i32) -> Vec<Insn> {
     vec![
         Insn::Const(Const::Int(value >> 1)),
@@ -110,7 +109,7 @@ fn shift_form(value: i32) -> Vec<Insn> {
     ]
 }
 
-/// То же для `long` (величина сдвига — всегда `int`!).
+/// The same for `long` (the shift amount is always an `int`!).
 fn shift_form_long(value: i64) -> Vec<Insn> {
     vec![
         Insn::Const(Const::Long(value >> 1)),
@@ -127,13 +126,18 @@ fn shift_form_long(value: i64) -> Vec<Insn> {
     ]
 }
 
-/// Opaque-предикат `(C*C + C) & 1 == 0` (истина для любого `C`):
-/// `[pred, ifne DEAD, goto MERGE, DEAD: nop, MERGE:]`, дальше — оригинал.
+/// Opaque predicate `(C*C + C) & 1 == 0` (true for any `C`).
 ///
-/// Метки выдаёт вызывающий код (свободные номера метода).
+/// Stack-neutral and leaves control flow unchanged: the computed value is
+/// consumed by a branch that never fires; the dead `DEAD: nop` branch only
+/// bloats linear disassembly.
+///
+/// Pattern: `[pred..., ifne DEAD, goto MERGE, DEAD: nop, MERGE:]`.
+/// Labels come from the calling code (free method numbers).
 pub(super) fn opaque_true(dead: u32, merge: u32, rng: &mut Rng) -> Vec<Insn> {
     let constant = rng.next_u64() as i32;
     vec![
+        // P = ((C*C) + C) & 1 — even, so always 0.
         Insn::Const(Const::Int(constant)),
         Insn::Dup,
         Insn::Binary {
@@ -150,6 +154,7 @@ pub(super) fn opaque_true(dead: u32, merge: u32, rng: &mut Rng) -> Vec<Insn> {
             prim: Prim::Int,
             op: Arith::And,
         },
+        // P != 0 never holds — the branch into DEAD is not taken, value popped.
         Insn::Branch(BranchCond::Zero(Cond::Ne), dead),
         Insn::Goto(merge),
         Insn::Mark(dead),

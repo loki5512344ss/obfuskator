@@ -1,4 +1,4 @@
-//! Поля, вызовы и создание объектов: индексы пула → строки IR.
+//! Fields, calls and object creation: pool indices → IR strings.
 
 use ristretto_classfile::ConstantPool;
 use ristretto_classfile::attributes::{ArrayType, Instruction};
@@ -7,7 +7,7 @@ use super::super::pool::{class_name, dynamic_parts, expect_kind, is_interface, r
 use crate::error::ClassfileError;
 use crate::insn::{ArrayKind, Insn, InvokeKind};
 
-/// `Some` — инструкция покрыта, `None` — отдать следующим конвертерам.
+/// `Some` — the instruction is covered; `None` — hand it to the next converters.
 pub(super) fn convert_ref(
     instruction: &Instruction,
     pool: &ConstantPool<'_>,

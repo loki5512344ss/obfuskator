@@ -1,13 +1,13 @@
 //! # noxis-classfile
 //!
-//! Собственный IR для классовых файлов JVM: разбор, представление, запись.
+//! Own IR for JVM class files: parsing, representation, writing.
 //!
-//! Почему свой IR, а не работа напрямую с крейтом-парсером: пассам нужна
-//! стабильная модель (метки вместо смещений, осознанный набор атрибутов),
-//! а не API третьей стороны, который меняется между версиями.
+//! Why a custom IR instead of working directly with a parser crate: passes
+//! need a stable model (labels instead of offsets, a deliberate attribute
+//! set), not a third-party API that changes between versions.
 //!
-//! Статус: модель и билдер готовы, бинарный parse/write — этап P1
-//! (см. `docs/stack.md`).
+//! Status: model and builder are ready; binary parse/write is stage P1
+//! (see `docs/stack.md`).
 
 pub mod error;
 pub mod format;

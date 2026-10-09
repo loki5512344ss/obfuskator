@@ -1,10 +1,10 @@
-//! Атрибуты backend'а → атрибуты нашего IR.
+//! Backend attributes → our IR attributes.
 //!
-//! `BootstrapMethods`, `EnclosingMethod`, `MethodParameters` и `ConstantValue`
-//! моделируются явно (в них лежат ссылки пула, переживающие пересборку);
-//! остальное структурированное, но нам ненужное, уезжает в `Raw` как есть.
-//! `Code` и `StackMapTable` здесь не обрабатываются — их разбирает вызывающий
-//! код метода (см. `super::class`).
+//! `BootstrapMethods`, `EnclosingMethod`, `MethodParameters` and `ConstantValue`
+//! are modeled explicitly (they hold pool references that survive rebuilding);
+//! everything else that is structured but unneeded by us goes to `Raw` as-is.
+//! `Code` and `StackMapTable` are not handled here — the calling method code
+//! parses them (see `super::class`).
 
 use ristretto_classfile::ConstantPool;
 use ristretto_classfile::attributes::Attribute as RtAttr;
@@ -15,7 +15,7 @@ use super::pool::{
 use crate::error::ClassfileError;
 use crate::model::{Attribute, BootstrapMethod, InnerClass, MethodParameter, RecordComponent};
 
-/// Один атрибут backend'а → наш атрибут (кроме `Code`/`StackMapTable`).
+/// One backend attribute → our attribute (except `Code`/`StackMapTable`).
 pub(super) fn convert(attr: &RtAttr, pool: &ConstantPool<'_>) -> Result<Attribute, ClassfileError> {
     Ok(match attr {
         RtAttr::SourceFile {
@@ -105,7 +105,7 @@ pub(super) fn convert(attr: &RtAttr, pool: &ConstantPool<'_>) -> Result<Attribut
     })
 }
 
-/// Несмоделированный атрибут → `Raw`: имя + байты `info` (без заголовка).
+/// An unmodeled attribute → `Raw`: name + `info` bytes (without the header).
 pub(super) fn raw(attr: &RtAttr) -> Result<Attribute, ClassfileError> {
     let mut bytes = Vec::new();
     attr.to_bytes(&mut bytes)
@@ -131,7 +131,7 @@ fn inner(
     })
 }
 
-/// Метод объемлющего класса (`0` — только класс, без метода).
+/// The enclosing class's method (`0` — class only, no method).
 fn enclosing_method(
     pool: &ConstantPool<'_>,
     index: u16,
@@ -194,7 +194,7 @@ fn bootstrap(
     })
 }
 
-/// Индекс пула, где `0` означает отсутствие значения.
+/// A pool index where `0` means the value is absent.
 fn optional_class(pool: &ConstantPool<'_>, index: u16) -> Result<Option<String>, ClassfileError> {
     if index == 0 {
         Ok(None)
@@ -203,7 +203,7 @@ fn optional_class(pool: &ConstantPool<'_>, index: u16) -> Result<Option<String>,
     }
 }
 
-/// Индекс `CONSTANT_Utf8`, где `0` означает отсутствие значения.
+/// A `CONSTANT_Utf8` index where `0` means the value is absent.
 fn optional_utf8(pool: &ConstantPool<'_>, index: u16) -> Result<Option<String>, ClassfileError> {
     if index == 0 {
         Ok(None)

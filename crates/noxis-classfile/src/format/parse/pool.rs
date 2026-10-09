@@ -1,11 +1,11 @@
-//! Разрешение индексов constant pool в строки нашего IR.
+//! Resolving constant-pool indices into strings of our IR.
 
 use ristretto_classfile::{Constant, ConstantPool, ReferenceKind};
 
 use crate::error::ClassfileError;
 use crate::insn::{Const, InvokeKind};
 
-/// Имя класса по `CONSTANT_Class`.
+/// The class name from a `CONSTANT_Class`.
 pub(super) fn class_name(pool: &ConstantPool<'_>, index: u16) -> Result<String, ClassfileError> {
     let name = pool
         .try_get_class(index)
@@ -13,7 +13,7 @@ pub(super) fn class_name(pool: &ConstantPool<'_>, index: u16) -> Result<String, 
     Ok(name.to_string())
 }
 
-/// `(owner, name, descriptor)` для `CONSTANT_Fieldref`/`_Methodref`.
+/// `(owner, name, descriptor)` for a `CONSTANT_Fieldref`/`_Methodref`.
 pub(super) fn ref_parts(
     pool: &ConstantPool<'_>,
     index: u16,
@@ -45,7 +45,7 @@ pub(super) fn ref_parts(
     Ok((owner, name, descriptor))
 }
 
-/// `(name, descriptor)` для `CONSTANT_NameAndType`.
+/// `(name, descriptor)` for a `CONSTANT_NameAndType`.
 pub(super) fn name_and_type(
     pool: &ConstantPool<'_>,
     index: u16,
@@ -58,7 +58,7 @@ pub(super) fn name_and_type(
     Ok((name, descriptor))
 }
 
-/// Строка из `CONSTANT_Utf8`.
+/// The string from a `CONSTANT_Utf8`.
 pub(super) fn utf8(pool: &ConstantPool<'_>, index: u16) -> Result<String, ClassfileError> {
     let value = pool
         .try_get_utf8(index)
@@ -66,7 +66,7 @@ pub(super) fn utf8(pool: &ConstantPool<'_>, index: u16) -> Result<String, Classf
     Ok(value.to_string())
 }
 
-/// Константа для `ldc`/`ldc_w`/`ldc2_w`.
+/// The constant for `ldc`/`ldc_w`/`ldc2_w`.
 pub(super) fn const_from(pool: &ConstantPool<'_>, index: u16) -> Result<Const, ClassfileError> {
     let constant = pool
         .try_get(index)
@@ -111,7 +111,7 @@ pub(super) fn const_from(pool: &ConstantPool<'_>, index: u16) -> Result<Const, C
     })
 }
 
-/// `(name, descriptor, bootstrap)` для `CONSTANT_InvokeDynamic`.
+/// `(name, descriptor, bootstrap)` for a `CONSTANT_InvokeDynamic`.
 pub(super) fn dynamic_parts(
     pool: &ConstantPool<'_>,
     index: u16,
@@ -134,12 +134,12 @@ pub(super) fn dynamic_parts(
     Ok((name, descriptor, bootstrap))
 }
 
-/// Вид вызова по индексу ссылки: интерфейсная или обычная.
+/// Call kind by reference index: interface or regular.
 pub(super) fn is_interface(pool: &ConstantPool<'_>, index: u16) -> bool {
     matches!(pool.try_get(index), Ok(Constant::InterfaceMethodRef { .. }))
 }
 
-/// JVMS §5.4.3.5: номер `reference_kind` для `CONSTANT_MethodHandle`.
+/// JVMS §5.4.3.5: the `reference_kind` number for a `CONSTANT_MethodHandle`.
 pub(super) fn kind_code(kind: &ReferenceKind) -> u8 {
     match kind {
         ReferenceKind::GetField => 1,
@@ -154,11 +154,11 @@ pub(super) fn kind_code(kind: &ReferenceKind) -> u8 {
     }
 }
 
-/// Проверка, что `Invoke` действительно ссылается на ожидаемый вид.
+/// Checks that an `Invoke` really refers to the expected kind.
 ///
-/// JVM принимает `Methodref` и `InterfaceMethodref` для всех видов вызова,
-/// кроме `invokeinterface` (там только интерфейсная); строгость сверх JVM
-/// ломает чтение реальных классов (статические методы интерфейсов).
+/// The JVM accepts both `Methodref` and `InterfaceMethodref` for every call
+/// kind except `invokeinterface` (interface reference only there); being
+/// stricter than the JVM breaks reading real classes (interface static methods).
 pub(super) fn expect_kind(
     pool: &ConstantPool<'_>,
     index: u16,

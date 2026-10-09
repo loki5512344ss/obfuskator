@@ -1,7 +1,7 @@
-//! Атрибуты нашего IR → атрибуты backend'а.
+//! Our IR attributes → backend attributes.
 //!
-//! Имена атрибутов (`SourceFile`, …) интернируются в пул здесь же — backend
-//! хранит только `name_index`, строка восстанавливается при чтении.
+//! Attribute names (`SourceFile`, …) are interned into the pool right here — the
+//! backend stores only `name_index`, and the string is recovered on read.
 
 use ristretto_classfile::attributes::{
     Attribute as RtAttr, LineNumber as RtLine, LocalVariableTable as RtLocal,
@@ -14,13 +14,13 @@ use crate::error::ClassfileError;
 use crate::insn::Label;
 use crate::model::{Attribute, LineNumber, LocalVariable, LocalVariableType};
 
-/// Позиции таблиц кода: метки → байты текущего layout.
+/// Code-table positions: labels → bytes of the current layout.
 pub(super) struct Positions<'a> {
     pub resolve: &'a dyn Fn(Label) -> Result<u32, ClassfileError>,
     pub byte_of: &'a dyn Fn(u32) -> Result<u16, ClassfileError>,
 }
 
-/// `LineNumberTable`: backend хранит номера инструкций и маппит сам.
+/// `LineNumberTable`: the backend stores instruction numbers and maps them itself.
 pub(super) fn line_number_table(
     lines: &[LineNumber],
     pool: &mut Pool,
@@ -43,7 +43,7 @@ pub(super) fn line_number_table(
     })
 }
 
-/// `LocalVariableTable`/`TypeTable` с пересчётом диапазона.
+/// `LocalVariableTable`/`TypeTable` with the range recomputed.
 pub(super) fn local_table(
     vars: &[LocalVariable],
     pool: &mut Pool,
@@ -66,7 +66,7 @@ pub(super) fn local_table(
             .collect::<Result<_, ClassfileError>>()?,
     })
 }
-/// Та же таблица для типов (`signature` вместо дескриптора).
+/// The same table for types (`signature` instead of a descriptor).
 pub(super) fn local_type_table(
     vars: &[LocalVariableType],
     pool: &mut Pool,
@@ -103,7 +103,7 @@ fn range(
     Ok((first, length))
 }
 
-/// Один наш атрибут → атрибут backend'а.
+/// One of our attributes → a backend attribute.
 pub(super) fn convert(attr: &Attribute, pool: &mut Pool) -> Result<RtAttr, ClassfileError> {
     Ok(match attr {
         Attribute::SourceFile(name) => RtAttr::SourceFile {

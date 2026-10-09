@@ -1,4 +1,4 @@
-//! Генерация имён: стили, анти-ключевые слова, уникальность в scope.
+//! Name generation: styles, anti-keyword checks, uniqueness within a scope.
 
 pub mod alphabet;
 #[cfg(test)]
@@ -13,18 +13,18 @@ use self::alphabet::{
     LATIN_UPPER, PLAUSIBLE_NOUN, PLAUSIBLE_SUFFIX, PLAUSIBLE_VERB, UNICODE_LETTERS,
 };
 
-/// Генератор имён с гарантированной уникальностью в пределах одного scope.
+/// Name generator with guaranteed uniqueness within a single scope.
 pub struct NameGenerator {
     rng: Rng,
     style: NameStyle,
     used: HashSet<String>,
-    /// Счётчик-страховка, если случайные варианты исчерпаны.
+    /// Fallback counter for when the random pool is exhausted.
     fallback: u64,
     avoid_class: bool,
 }
 
 impl NameGenerator {
-    /// Генератор для указанного стиля.
+    /// Generator for the given style.
     pub fn new(rng: Rng, style: NameStyle) -> Self {
         Self {
             rng,
@@ -35,18 +35,18 @@ impl NameGenerator {
         }
     }
 
-    /// Режим «имена классов»: дополнительно избегаем имён из JDK/аннотаций.
+    /// "Class name" mode: additionally avoid names from the JDK/annotations.
     pub fn for_classes(mut self) -> Self {
         self.avoid_class = true;
         self
     }
 
-    /// Занять конкретное имя (защита от коллизий с keep-именами).
+    /// Reserve a specific name (protects against collisions with keep-listed names).
     pub fn reserve(&mut self, name: impl Into<String>) {
         self.used.insert(name.into());
     }
 
-    /// Следующее свободное имя.
+    /// The next free name.
     pub fn next_name(&mut self) -> String {
         for _ in 0..64 {
             let candidate = self.candidate();
@@ -55,7 +55,7 @@ impl NameGenerator {
                 return candidate;
             }
         }
-        // Страховка: детерминированный счётчик, гарантированно уникален.
+        // Fallback: a deterministic counter, guaranteed unique.
         loop {
             self.fallback += 1;
             let candidate = format!("{}{}", self.style_prefix(), self.fallback);
@@ -95,7 +95,7 @@ impl NameGenerator {
                     };
                     let idx = self.rng.below(alpha.len() as u64) as usize;
                     let ch = alpha[idx] as char;
-                    // Первый символ — только буква (не цифра).
+                    // First character must be a letter, not a digit.
                     if i == 0 && !ch.is_ascii_alphabetic() {
                         out.push('a');
                     } else {
@@ -123,9 +123,9 @@ impl NameGenerator {
                 }
                 name
             }
-            // Маскируется под обычный прикладной код, а не под мусор:
-            // классы — `NounSuffix` (`TextureCache`), члены — `verbNoun`
-            // (`resolveToken`) camelCase.
+            // Blends in as ordinary application code instead of obvious
+            // noise: classes get `NounSuffix` (`TextureCache`), members get
+            // camelCase `verbNoun` (`resolveToken`).
             NameStyle::Plausible => {
                 let noun = PLAUSIBLE_NOUN[self.rng.below(PLAUSIBLE_NOUN.len() as u64) as usize];
                 if self.avoid_class {

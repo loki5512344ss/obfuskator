@@ -1,10 +1,10 @@
-//! `Code` backend'а → тело метода нашего IR: метки, исключения, кадры.
+//! Backend `Code` → our IR method body: labels, exceptions, frames.
 //!
-//! Backend уже перевёл байтовые смещения в номера инструкций — конвертеры
-//! работают прямо с ними: метки ставятся на целях переходов, границах
-//! try-блоков и позициях отладочных таблиц; кадры переносятся как есть
-//! (индексные дельты). Позиции `LineNumberTable`/`LocalVariableTable` —
-//! тоже метки, поэтому вставки пассов их не ломают (байты досчитает writer).
+//! The backend already turned byte offsets into instruction indices — the
+//! converters work directly with them: labels are placed on branch targets,
+//! try-block boundaries and debug-table positions; frames are carried over as-is
+//! (index deltas). `LineNumberTable`/`LocalVariableTable` positions are labels
+//! too, so pass insertions don't break them (the writer recomputes the bytes).
 
 mod frames;
 mod labels;
@@ -27,7 +27,7 @@ use crate::model::{
 use frames::{catch_type, to_frames};
 use labels::{assign, collect_debug_labels, label_indexes, lookup, resolve_byte, resolve_end};
 
-/// Тело метода целиком: backend `Code` → наш [`Code`].
+/// The whole method body: backend `Code` → our [`Code`].
 pub(super) fn convert_code(
     max_stack: u16,
     max_locals: u16,
@@ -150,7 +150,7 @@ pub(super) fn convert_code(
     })
 }
 
-/// Байтовые смещения инструкций и длина тела метода.
+/// Instruction byte offsets and the method body length.
 fn layout(code: &[Instruction]) -> Result<(Vec<u16>, u16), ClassfileError> {
     let mut cursor = Cursor::new(Vec::new());
     let mut offsets = Vec::with_capacity(code.len());

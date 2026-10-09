@@ -1,7 +1,7 @@
-//! Тело метода нашего IR → атрибут `Code` backend'а.
+//! Our IR method body → the backend `Code` attribute.
 //!
-//! Метки резолвятся в номера инструкций один раз здесь; дальше backend сам
-//! пересчитывает номера в байтовые смещения при `to_bytes`.
+//! Labels resolve into instruction numbers once, here; then the backend
+//! recomputes numbers into byte offsets on `to_bytes`.
 
 mod frames;
 pub(crate) mod insns;
@@ -22,7 +22,7 @@ use crate::model::{Attribute, Code, ExceptionHandler};
 
 use frames::convert_frames;
 
-/// Тело метода → готовый атрибут `Code` (с логическими номерами инструкций).
+/// Method body → a ready `Code` attribute (with logical instruction numbers).
 pub(super) fn convert_code(code: &Code, pool: &mut Pool) -> Result<RtAttr, ClassfileError> {
     let (labels, bare) = split_marks(&code.insns)?;
     let resolve = |label: Label| -> Result<u32, ClassfileError> {
@@ -59,7 +59,7 @@ pub(super) fn convert_code(code: &Code, pool: &mut Pool) -> Result<RtAttr, Class
     let mut attributes = Vec::with_capacity(code.attributes.len() + 1);
     for attr in &code.attributes {
         attributes.push(match attr {
-            // Backend хранит номера строк в индексах и маппит сам.
+            // The backend stores line numbers as indices and maps them itself.
             Attribute::LineNumberTable(lines) => attrs::line_number_table(lines, pool, &positions)?,
             Attribute::LocalVariableTable(vars) => attrs::local_table(vars, pool, &positions)?,
             Attribute::LocalVariableTypeTable(vars) => {
@@ -84,7 +84,7 @@ pub(super) fn convert_code(code: &Code, pool: &mut Pool) -> Result<RtAttr, Class
     })
 }
 
-/// Метки → номера инструкций; сами маркеры из потока убираются.
+/// Labels → instruction numbers; the markers themselves are removed from the stream.
 fn split_marks(insns: &[Insn]) -> Result<(BTreeMap<Label, u32>, Vec<&Insn>), ClassfileError> {
     let mut labels = BTreeMap::new();
     let mut bare = Vec::with_capacity(insns.len());
@@ -108,10 +108,10 @@ fn split_marks(insns: &[Insn]) -> Result<(BTreeMap<Label, u32>, Vec<&Insn>), Cla
     Ok((labels, bare))
 }
 
-/// Номер инструкции → байтовое смещение (замер с заглушками целей).
+/// Instruction number → byte offset (measured with placeholder targets).
 ///
-/// В карту входит и конец кода (`len` → длина): концы диапазонов указывают
-/// за последнюю инструкцию.
+/// The map also includes the code end (`len` → length): range ends point past
+/// the last instruction.
 pub(crate) fn measure(insns: &[RtInsn]) -> Result<BTreeMap<u32, u16>, ClassfileError> {
     let mut map = BTreeMap::new();
     let mut cursor = Cursor::new(Vec::new());
@@ -132,7 +132,7 @@ pub(crate) fn measure(insns: &[RtInsn]) -> Result<BTreeMap<u32, u16>, ClassfileE
     Ok(map)
 }
 
-/// Цели ветвлений не влияют на размер — подменяем текущей позицией для замера.
+/// Branch targets don't affect size — substitute the current position for sizing.
 fn smash_targets(insn: &mut RtInsn, position: u16) {
     match insn {
         RtInsn::Ifeq(target)
@@ -178,7 +178,7 @@ fn entry(
     })
 }
 
-/// Условный переход IR → `if*` backend'а.
+/// An IR conditional branch → the backend's `if*`.
 fn branch(cond: BranchCond, target: u32) -> Result<RtInsn, ClassfileError> {
     let target = fit_index(target)?;
     Ok(match cond {
@@ -211,13 +211,13 @@ fn ret_op(prim: Option<Prim>) -> RtInsn {
     }
 }
 
-/// Номер инструкции обязан влезать в `u16` (метод < 64 КБ кода).
+/// The instruction number must fit in `u16` (method < 64 KB of code).
 fn fit_index(index: u32) -> Result<u16, ClassfileError> {
     u16::try_from(index)
         .map_err(|_| ClassfileError::Write(format!("номер инструкции {index} вне u16")))
 }
 
-/// Дельта `switch`: цель минус позиция самого `switch`.
+/// A `switch` delta: the target minus the `switch` instruction's own position.
 fn delta(index: u32, target: u32) -> Result<i32, ClassfileError> {
     let (index, target) = (to_i32(index)?, to_i32(target)?);
     target

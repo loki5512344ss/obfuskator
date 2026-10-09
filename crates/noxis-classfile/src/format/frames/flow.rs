@@ -1,4 +1,4 @@
-//! CFG тела метода: метки, рёбра, точки кадров, диапазоны handler'ов.
+//! A method body's CFG: labels, edges, frame points, handler ranges.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -7,7 +7,7 @@ use crate::error::ClassfileError;
 use crate::insn::{Insn, Label};
 use crate::model::ExceptionHandler;
 
-/// Метки → номера инструкций без маркеров.
+/// Labels → instruction numbers, without the markers.
 pub(super) fn strip_marks<'a>(
     insns: &'a [Insn],
     merger: &Merger<'_>,
@@ -31,7 +31,7 @@ pub(super) fn strip_marks<'a>(
     Ok((labels, bare))
 }
 
-/// Рёбра CFG без исключений: продолжение + цели переходов.
+/// CFG edges without exceptions: fallthrough + branch targets.
 pub(super) fn successors(
     insn: &Insn,
     index: u32,
@@ -40,8 +40,8 @@ pub(super) fn successors(
     merger: &Merger<'_>,
 ) -> Result<Vec<u32>, ClassfileError> {
     let mut out = Vec::new();
-    // Без продолжения: переходы без возврата и выходы из метода.
-    // `Jsr`/`Ret` сюда не доходят (их отвергает `transfer`), но рёбра есть.
+    // No fallthrough: jumps that don't return and method exits.
+    // `Jsr`/`Ret` never reach here (rejected by `transfer`), but the edges exist.
     let terminal = matches!(
         insn,
         Insn::Goto(..)
@@ -67,7 +67,7 @@ pub(super) fn successors(
     Ok(out)
 }
 
-/// Точки, где верификатор требует кадры: цели переходов + входы handler'ов.
+/// Points where the verifier requires frames: branch targets + handler entries.
 pub(super) fn frame_targets(
     bare: &[&Insn],
     labels: &BTreeMap<Label, u32>,
@@ -91,12 +91,12 @@ pub(super) fn frame_targets(
     Ok(targets)
 }
 
-/// Точка handler'а в номерах инструкций: `(start, end, handler, тип перехвата)`.
+/// A handler point in instruction numbers: `(start, end, handler, catch type)`.
 ///
-/// Диапазоны полуоткрытые `[start, end)`, как в JVMS.
+/// Ranges are half-open `[start, end)`, as in the JVMS.
 pub(super) type HandlerRange = (u32, u32, u32, Option<String>);
 
-/// Handler'ы в номерах инструкций для рёбер исключений.
+/// Handlers in instruction numbers, for exception edges.
 pub(super) fn handler_ranges(
     table: &[ExceptionHandler],
     labels: &BTreeMap<Label, u32>,

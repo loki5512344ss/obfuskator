@@ -1,49 +1,50 @@
-//! Секции конфигурации: стили имён и настройки отдельных пассов.
+//! Config sections: name styles and per-pass settings.
 
 use serde::{Deserialize, Serialize};
 
-/// Стиль генерации имён.
+/// Name generation style.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum NameStyle {
-    /// `a`, `b`, ... `aa` — короткие латинские.
+    /// `a`, `b`, ... `aa` — short Latin.
     ShortLatin,
-    /// `I`, `l`, `O`, `0` — визуально одинаковые.
+    /// `I`, `l`, `O`, `0` — visually identical.
     IlO0,
-    /// Случайные unicode-имена (суррогаты допустимы в modified UTF-8).
+    /// Random Unicode names (surrogates are valid in modified UTF-8).
     Unicode,
-    /// Смешанная латиница средней длины.
+    /// Medium-length mixed-case Latin.
     #[default]
     MixedLatin,
-    /// Псевдосмысленные слова из другого проекта (дезориентация).
+    /// Pseudo-meaningful words from another project (misdirection).
     DecoyWords,
-    /// Правдоподобные имена: `TextureCache`, `resolveToken` — вместо
-    /// явного мусора маскируется под обычный прикладной код.
+    /// Plausible names: `TextureCache`, `resolveToken` — blends in as
+    /// ordinary application code instead of obvious noise.
     Plausible,
 }
 
-/// Настройки переименования.
+/// Rename pass settings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct RenameConfig {
-    /// Переименовывать пакеты в случайные пути.
+    /// Scatter packages into random paths.
     pub spread_packages: bool,
-    /// Размер пула случайных пакетов.
+    /// Size of the random package pool.
     pub package_pool: usize,
-    /// Стиль имён классов.
+    /// Name style for classes.
     pub class_style: NameStyle,
-    /// Стиль имён полей и методов.
+    /// Name style for fields and methods.
     pub member_style: NameStyle,
-    /// Стиль имён локальных переменных и параметров.
+    /// Name style for local variables and parameters.
     pub local_style: NameStyle,
-    /// Делать члены `public` (чтобы не ломать inheritance между пакетами).
+    /// Widen members to `public` (so moving to a new package doesn't break
+    /// inheritance).
     pub widen_access: bool,
-    /// Переименовывать enum-константы.
+    /// Rename enum constants.
     pub rename_enum_constants: bool,
-    /// Переименовывать локальные переменные и параметры.
+    /// Rename local variables and parameters.
     pub rename_locals: bool,
-    /// Переименовывать и не-private члены (агрессивно: безопасно для приложений,
-    /// опасно для библиотек и кода с рефлексией).
+    /// Also rename non-private members (aggressive: safe for applications,
+    /// dangerous for libraries and reflection-heavy code).
     pub rename_public_members: bool,
 }
 
@@ -63,19 +64,20 @@ impl Default for RenameConfig {
     }
 }
 
-/// Настройки шифрования строк.
+/// String encryption settings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct StringsConfig {
-    /// Схемы шифра, между которыми перемешиваются строки.
+    /// Cipher schemes strings are rotated across.
     pub schemes: Vec<String>,
-    /// Строки короче этого не шифруются.
+    /// Strings shorter than this are not encrypted.
     pub min_len: usize,
-    /// Дробить длинные строки на чанки (меньше похоже на пул).
+    /// Split long strings into chunks (looks less like a string pool).
     pub split_above: usize,
-    /// Не шифровать строки, совпадающие с этими паттернами.
+    /// Don't encrypt strings matching these patterns.
     pub skip: Vec<String>,
-    /// Вычислять ключ из KDF(class, method, index), а не класть рядом с текстом.
+    /// Derive the key from KDF(class, method, index) instead of placing it
+    /// next to the ciphertext.
     pub derive_key: bool,
 }
 
@@ -91,15 +93,15 @@ impl Default for StringsConfig {
     }
 }
 
-/// Настройки обфускации контрольного потока.
+/// Control-flow obfuscation settings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct FlowConfig {
-    /// Схемы, между которыми выбирается случайно по методу.
+    /// Schemes picked randomly per method.
     pub schemes: Vec<String>,
-    /// Не трогать методы больше этого числа инструкций (бюджет размера).
+    /// Don't touch methods larger than this many instructions (size budget).
     pub max_insns: usize,
-    /// Вплетать opaque-предикаты в тела блоков.
+    /// Weave opaque predicates into block bodies.
     pub encrypt_block_bodies: bool,
 }
 
@@ -118,15 +120,15 @@ impl Default for FlowConfig {
     }
 }
 
-/// Настройки шифрования констант.
+/// Constant encryption settings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct ConstantsConfig {
-    /// Схемы разбиения (`xor`, `add`, `shift`), выбор по RNG на константу.
+    /// Splitting schemes (`xor`, `add`, `shift`), picked by RNG per constant.
     pub schemes: Vec<String>,
-    /// Вставлять opaque-предикаты (не больше этого на метод).
+    /// Insert opaque predicates (at most this many per method).
     pub max_predicates: usize,
-    /// Не трогать константы в этих классах (префиксы внутренних имён).
+    /// Don't touch constants in these classes (internal-name prefixes).
     pub skip: Vec<String>,
 }
 
@@ -140,15 +142,16 @@ impl Default for ConstantsConfig {
     }
 }
 
-/// Настройки шума.
+/// Noise pass settings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct NoiseConfig {
-    /// Сколько junk-классов на каждый настоящий (0 = выключено).
+    /// How many junk classes per real one (0 = disabled).
     pub junk_ratio: usize,
-    /// Число junk-аннотаций на класс.
+    /// Number of junk annotations per class.
     pub junk_annotations: usize,
-    /// Вплетать junk-классы в граф достижимости (обязательно для осмысленности).
+    /// Weave junk classes into the reachability graph (required for them to
+    /// make sense).
     pub weave_reachable: bool,
 }
 
@@ -162,17 +165,17 @@ impl Default for NoiseConfig {
     }
 }
 
-/// Настройки отладочной информации.
+/// Debug info pass settings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct DebugConfig {
-    /// Удалять `LineNumberTable`.
+    /// Strip `LineNumberTable`.
     pub strip_line_numbers: bool,
-    /// Удалять `LocalVariableTable`.
+    /// Strip `LocalVariableTable`.
     pub strip_local_variables: bool,
-    /// Подменять `SourceFile` на ложное имя.
+    /// Replace `SourceFile` with a fake name.
     pub spoof_source_file: bool,
-    /// Удалять `Signature`/`InnerClasses`/`EnclosingMethod`.
+    /// Strip `Signature`/`InnerClasses`/`EnclosingMethod`.
     pub strip_signatures: bool,
 }
 

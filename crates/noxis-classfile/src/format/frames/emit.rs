@@ -1,8 +1,9 @@
-//! Эмиссия компактных кадров в точках, где их ждёт верификатор.
+//! Emitting compact frames at the points where the verifier expects them.
 //!
-//! Вид кадра выбирается сравнением с предыдущим кадром (`Same`/`Append`/
-//! `Chop`/`SameLocals`, иначе `Full`) — как у `javac`. Хвостовые `Top`
-//! при сравнении и записи отрезаются: пустой слот — не тип.
+//! A frame's kind is chosen by comparing with the previous frame
+//! (`Same`/`Append`/`Chop`/`SameLocals`, otherwise `Full`) — like `javac`.
+//! Trailing `Top`s are trimmed both when comparing and when writing: an empty
+//! slot is not a type.
 
 use std::collections::BTreeSet;
 
@@ -11,10 +12,10 @@ use super::xfer::State;
 use super::{StackMapFrame, VerificationType};
 use crate::error::ClassfileError;
 
-/// Кадры во всех точках `targets` (отсортированы — дельты по порядку).
+/// Frames at every point in `targets` (sorted — deltas in order).
 ///
-/// Дельты — в номерах инструкций (как backend после чтения); writer сам
-/// пересчитает их в байты.
+/// Deltas are in instruction numbers (like the backend after reading); the writer
+/// recomputes them into bytes itself.
 pub(super) fn emit_frames(
     states: &[Option<State>],
     targets: &BTreeSet<u32>,
@@ -49,8 +50,8 @@ fn select(
     previous: &[VerificationType],
     stack: &[VerificationType],
 ) -> StackMapFrame {
-    // Сравнение — на гранулярности переменных (`long` — одна запись,
-    // как у `javac`): иначе половины пар дают `Append{[Top, Long]}`.
+    // Comparison is at variable granularity (`long` — one entry, like `javac`);
+    // otherwise halves would produce `Append{[Top, Long]}`.
     let current = vars(locals);
     let base = vars(previous);
     if current == base {
@@ -93,10 +94,10 @@ fn select(
     }
 }
 
-/// Слоты → переменные: `[Long, Top]` — одна запись; хвостовые `Top` — прочь.
+/// Slots → variables: `[Long, Top]` — one entry; trailing `Top`s — gone.
 ///
-/// Одиночные `Top` внутри (дыры) сохраняются: в `Full` это легальный тип,
-/// а в `Append` мы их не пускаем (см. `select`).
+/// Single `Top`s inside (holes) are kept: in `Full` they are a legal type, and we
+/// don't allow them in `Append` (see `select`).
 fn vars(locals: &[VerificationType]) -> Vec<VerificationType> {
     let mut out = Vec::with_capacity(locals.len());
     let mut index = 0;

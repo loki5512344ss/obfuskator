@@ -1,6 +1,6 @@
-//! Ошибки разбора/записи классовых файлов.
+//! Errors from class-file parsing/writing.
 
-/// Ошибка на уровне одного классового файла.
+/// An error at the level of a single class file.
 #[derive(Debug, thiserror::Error)]
 pub enum ClassfileError {
     #[error("не удалось разобрать классовый файл: {0}")]

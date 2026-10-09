@@ -1,5 +1,5 @@
-//! Назначение новых имён: карты, семейства виртуальных методов,
-//! пул пакетов и финальное ширинирование доступа.
+//! Assigning new names: maps, virtual method families, the package pool,
+//! and final access widening.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -10,11 +10,11 @@ use noxis_core::{Config, Context, NameStyle, Rng};
 use super::{ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC};
 use crate::namegen::NameGenerator;
 
-/// `(owner, name, descriptor)` — как в JVM-ссылке.
+/// `(owner, name, descriptor)` — matches a JVM reference.
 pub(super) type MemberKey = (String, String, String);
 
-/// Карты переименований одного прогона: `declared` — где объявлено,
-/// `alias` — наследники, которые наследуют это имя без своего объявления.
+/// Rename maps for one run: `declared` is where a member was declared,
+/// `alias` is subclasses that inherit the name without declaring it themselves.
 #[derive(Debug, Default)]
 pub(super) struct RenameMaps {
     pub(super) classes: BTreeMap<String, String>,
@@ -41,7 +41,7 @@ impl RenameMaps {
             .cloned()
     }
 
-    /// Псевдоними: наследник вызывает член, объявленный в предке.
+    /// Aliases: a subclass calls a member declared on a parent class.
     pub(super) fn expand(&mut self, hierarchy: &ClassHierarchy, owners: &[String]) {
         let methods: Vec<(MemberKey, String)> = self
             .methods
@@ -85,8 +85,8 @@ impl RenameMaps {
     }
 }
 
-/// Переименование виртуальных методов «семейством»: одно имя на всю иерархию,
-/// включая мостовые методы с ковариантным возвратом.
+/// Rename virtual methods as a "family": one name for the whole hierarchy,
+/// including bridge methods with covariant returns.
 pub(super) fn rename_virtual_families(
     program: &Program,
     analysis: &Analysis,
@@ -94,8 +94,8 @@ pub(super) fn rename_virtual_families(
     cfg: &Config,
     ctx: &mut Context,
 ) -> usize {
-    // Семейство = (имя, параметры): возврат игнорируем — так захватываем
-    // ковариантные возвраты и мостовые методы (`ACC_BRIDGE`) разом.
+    // Family = (name, params): the return type is ignored, so covariant
+    // returns and bridge methods (`ACC_BRIDGE`) are captured together.
     let mut families: BTreeMap<(String, String), Vec<MemberKey>> = BTreeMap::new();
     let mut locked_families: BTreeSet<(String, String)> = BTreeSet::new();
 
@@ -149,7 +149,7 @@ pub(super) fn rename_virtual_families(
     renamed
 }
 
-/// `(<params>)<ret>` → `(<params>)`, либо `None`, если дескриптор кривой.
+/// `(<params>)<ret>` → `(<params>)`, or `None` if the descriptor is malformed.
 fn params_of(descriptor: &str) -> Option<String> {
     let close = descriptor.find(')')?;
     if !descriptor.starts_with('(') {
@@ -172,7 +172,8 @@ pub(super) fn simple_name(internal: &str) -> String {
     }
 }
 
-/// Пул случайных пакетов (2–3 сегмента); при выключенном разбросе — один пустой.
+/// Pool of random packages (2-3 segments); a single empty one when spreading
+/// is turned off.
 pub(super) fn generate_packages(cfg: &Config, rng: &mut Rng) -> Vec<String> {
     if !cfg.rename.spread_packages {
         return vec![String::new()];
@@ -194,7 +195,7 @@ pub(super) fn generate_packages(cfg: &Config, rng: &mut Rng) -> Vec<String> {
         .collect()
 }
 
-/// Переписать дескриптор/сигнатуру: `Lpkg/Class;` → новое имя класса.
+/// Rewrite a descriptor/signature: `Lpkg/Class;` → the new class name.
 pub(super) fn rewrite_descriptor(desc: &str, classes: &BTreeMap<String, String>) -> String {
     if !desc.contains('L') {
         return desc.to_string();
@@ -220,7 +221,7 @@ pub(super) fn rewrite_descriptor(desc: &str, classes: &BTreeMap<String, String>)
     out
 }
 
-/// Расширить доступ до `public`, чтобы переезд в другой пакет не ломал вызовы.
+/// Widen access to `public` so moving to a different package doesn't break calls.
 pub(super) fn widen_all(program: &mut Program) {
     for class in program.classes.iter_mut() {
         class.access_flags = widen(class.access_flags);

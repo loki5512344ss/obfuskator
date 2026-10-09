@@ -1,7 +1,8 @@
 //! Project structure rules, invoked from every crate's `build.rs`.
 //!
 //! Rules apply to Rust code only, not to documentation:
-//! * every `.rs` file is at most [`MAX_FILE_LINES`] lines long;
+//! * every `.rs` file holds at most [`MAX_FILE_LINES`] *code* lines — blank
+//!   lines and full-line comments (`//`, `///`, `//!`) are not counted;
 //! * every directory inside a crate's `src/`, `tests/` or `benches/` holds
 //!   at most [`MAX_DIR_FILES`] files — subdirectories are unlimited.
 //!
@@ -13,7 +14,10 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Maximum number of lines in a Rust source file.
+/// Maximum number of code lines in a Rust source file.
+///
+/// Comment and blank lines are excluded (see [`count_code_lines`]) so the
+/// gate measures real code bulk, not documentation weight.
 pub const MAX_FILE_LINES: usize = 250;
 
 /// Maximum number of files per directory; subdirectories are not counted.
@@ -35,9 +39,9 @@ pub fn check() {
     let manifest = manifest_dir();
     let mut violations = Vec::new();
 
-    // `src/` обязателен; `tests/` и `benches/` проверяются, если созданы —
-    // иначе правило «250 строк» обходится выносом кода в тесты. `docs/` вне
-    // гейта: правила — только про Rust-код.
+    // `src/` is required; `tests/` and `benches/` are checked only when they
+    // exist — otherwise the line rule is bypassed by moving code into tests.
+    // `docs/` stays out of the gate: the rules are about Rust code only.
     let roots = [
         manifest.join("src"),
         manifest.join("tests"),
@@ -124,25 +128,34 @@ pub fn scan(root: &Path, violations: &mut Vec<String>) {
 }
 
 fn check_line_limit(path: &Path, violations: &mut Vec<String>) {
-    let lines = count_lines(path);
+    let lines = count_code_lines(path);
     if lines > MAX_FILE_LINES {
         violations.push(format!(
-            "{}: {lines} lines > {MAX_FILE_LINES}",
+            "{}: {lines} code lines > {MAX_FILE_LINES}",
             path.display()
         ));
     }
 }
 
-/// Counts lines without requiring the file to be valid UTF-8.
-fn count_lines(path: &Path) -> usize {
-    let Ok(bytes) = fs::read(path) else {
-        return 0;
+/// Counts *code* lines, skipping blanks and full-line comments.
+///
+/// A line is code when, after leading whitespace is stripped, it is non-empty
+/// and does not start with `//` (which also covers `///` and `//!`). A line
+/// that carries code followed by a trailing comment still counts once. Falls
+/// back to a raw newline count when the file is not valid UTF-8.
+fn count_code_lines(path: &Path) -> usize {
+    let Ok(text) = fs::read_to_string(path) else {
+        let Ok(bytes) = fs::read(path) else {
+            return 0;
+        };
+        return bytes.iter().filter(|&&byte| byte == b'\n').count();
     };
-    if bytes.is_empty() {
-        return 0;
-    }
-    let newlines = bytes.iter().filter(|&&b| b == b'\n').count();
-    newlines + usize::from(bytes.last() != Some(&b'\n'))
+    text.lines()
+        .filter(|line| {
+            let trimmed = line.trim_start();
+            !trimmed.is_empty() && !trimmed.starts_with("//")
+        })
+        .count()
 }
 
 fn manifest_dir() -> PathBuf {

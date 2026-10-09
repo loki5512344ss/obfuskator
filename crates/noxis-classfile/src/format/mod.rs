@@ -1,5 +1,6 @@
-//! Чтение/запись бинарного формата `.class` (JVMS §4) через backend
-//! `ristretto_classfile`: обзор кандидатов и решение — `docs/stack.md`.
+//! Reading/writing the binary `.class` format (JVMS §4) through the
+//! `ristretto_classfile` backend: candidate review and decision in
+//! `docs/stack.md`.
 
 mod frames;
 mod parse;
@@ -10,20 +11,21 @@ pub use frames::{Hierarchy, StackMapFrame, VerificationType, compute_frames};
 use crate::error::ClassfileError;
 use crate::model::ClassFile;
 
-/// Разобрать один `.class` в [`ClassFile`].
+/// Parse one `.class` into a [`ClassFile`].
 pub fn parse(bytes: &[u8]) -> Result<ClassFile, ClassfileError> {
     parse::class::parse_class(bytes)
 }
 
-/// Записать [`ClassFile`] в байты, включая пересчёт `Code`/`StackMapTable`.
+/// Write a [`ClassFile`] to bytes, including `Code`/`StackMapTable` recompute.
 pub fn write(class: &ClassFile) -> Result<Vec<u8>, ClassfileError> {
     write::write_class(class)
 }
 
-/// Классы, которые не изменялись, должны уезжать в выходной архив «как есть».
+/// Classes that were not modified must go to the output archive "as-is".
 ///
-/// Это дешевле и безопаснее, чем round-trip через наш IR: нет риска потерять
-/// неизвестный атрибут. Реализация зависит от решения по backend (P1).
+/// This is cheaper and safer than a round-trip through our IR: no risk of
+/// losing an unknown attribute. The implementation depends on the backend
+/// decision (P1).
 pub fn passthrough_needed(class: &ClassFile) -> bool {
     class.methods.is_empty() && class.fields.is_empty()
 }

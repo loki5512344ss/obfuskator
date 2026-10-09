@@ -1,9 +1,9 @@
-//! Типы операндов инструкций: константы, примитивы, условия, вызовы.
+//! Instruction operand types: constants, primitives, conditions, calls.
 
-/// Идентификатор метки внутри одного метода.
+/// A label identifier within a single method.
 pub type Label = u32;
 
-/// Константа для `ldc`/`ldc_w`/`ldc2_w`.
+/// A constant for `ldc`/`ldc_w`/`ldc2_w`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Const {
     Int(i32),
@@ -11,7 +11,7 @@ pub enum Const {
     Float(f32),
     Double(f64),
     String(String),
-    /// Внутреннее имя класса (`java/lang/String`).
+    /// The class's internal name (`java/lang/String`).
     Class(String),
     MethodType(String),
     MethodHandle {
@@ -21,7 +21,7 @@ pub enum Const {
         descriptor: String,
         itf: bool,
     },
-    /// `CONSTANT_Dynamic`: имя, дескриптор, индекс bootstrap-метода.
+    /// `CONSTANT_Dynamic`: name, descriptor, bootstrap-method index.
     Dynamic {
         name: String,
         descriptor: String,
@@ -29,7 +29,7 @@ pub enum Const {
     },
 }
 
-/// Размер операнда/результата арифметики.
+/// Operand/result size of an arithmetic operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Prim {
     Int,
@@ -38,7 +38,7 @@ pub enum Prim {
     Double,
 }
 
-/// Арифметическая/битовая операция; тип берётся из [`Prim`].
+/// An arithmetic/bitwise operation; the type comes from [`Prim`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Arith {
     Add,
@@ -55,7 +55,7 @@ pub enum Arith {
     Ushr,
 }
 
-/// Условие перехода.
+/// A branch condition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Cond {
     Eq,
@@ -66,10 +66,10 @@ pub enum Cond {
     Ge,
 }
 
-/// Вид условного перехода (соответствует семействам `if*`).
+/// Kind of conditional branch (matches the `if*` families).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BranchCond {
-    /// `if<cond>` относительно нуля.
+    /// `if<cond>` against zero.
     Zero(Cond),
     /// `if_icmp<cond>`.
     Int(Cond),
@@ -79,7 +79,7 @@ pub enum BranchCond {
     Null { is_null: bool },
 }
 
-/// Вид вызова.
+/// Kind of call.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvokeKind {
     Virtual,
@@ -88,7 +88,7 @@ pub enum InvokeKind {
     Interface,
 }
 
-/// Конверсия типов (`i2l`, `f2b`, ... — JVMS §6.5.i2<b|c|s|l|f|d>).
+/// Type conversion (`i2l`, `f2b`, ... — JVMS §6.5.i2<b|c|s|l|f|d>).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Convert {
     I2L,
@@ -108,7 +108,7 @@ pub enum Convert {
     D2F,
 }
 
-/// Тип элемента массива для `newarray`/`*aload`/`*astore`.
+/// Array element type for `newarray`/`*aload`/`*astore`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArrayKind {
     Boolean,
@@ -122,10 +122,10 @@ pub enum ArrayKind {
     Reference,
 }
 
-/// Тип слота локальной переменной для `*load*`/`*store*`.
+/// Local-variable slot type for `*load*`/`*store*`.
 ///
-/// Хранится явно: выбор опкода (`iload` vs `aload`) — подсказка верификатору,
-/// потерять её при round-trip нельзя.
+/// Stored explicitly: the opcode choice (`iload` vs `aload`) is a hint to the
+/// verifier, and losing it on a round-trip is not acceptable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SlotKind {
     Int,

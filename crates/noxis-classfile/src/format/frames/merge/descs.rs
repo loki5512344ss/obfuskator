@@ -1,12 +1,12 @@
-//! Разбор дескрипторов типов (`(...)V`, `[L...;`).
+//! Descriptor parsing (`(...)V`, `[L...;`).
 
 use super::super::VerificationType;
 
-/// Ошибка разбора дескриптора (контекст добавляет вызывающий код).
+/// Descriptor parse error (context is added by the caller).
 #[derive(Debug)]
 pub(crate) struct DescError(pub String);
 
-/// Уложить слоты значения в locals с позиции; вернуть следующую позицию.
+/// Write value slots into `locals` at position; return next position.
 pub(crate) fn write_local(
     locals: &mut [VerificationType],
     slot: usize,
@@ -22,7 +22,7 @@ pub(crate) fn write_local(
     Ok(slot + width)
 }
 
-/// Разобрать дескриптор массива на (глубина, элемент без `;`).
+/// Parse an array descriptor into (depth, element without `;`).
 pub(crate) fn split_array(descriptor: &str) -> Option<(usize, &str)> {
     let dims = descriptor.bytes().take_while(|&b| b == b'[').count();
     if dims == 0 {
@@ -31,7 +31,7 @@ pub(crate) fn split_array(descriptor: &str) -> Option<(usize, &str)> {
     Some((dims, descriptor[dims..].trim_end_matches(';')))
 }
 
-/// Слоты одного полевого дескриптора (`long`/`double` — парой с `Top`).
+/// Slots for a single field descriptor (`long`/`double` — pair with `Top`).
 pub(crate) fn field_slots(descriptor: &str) -> Result<Vec<VerificationType>, DescError> {
     let mut chars = descriptor.chars();
     match chars.next() {
@@ -57,10 +57,10 @@ pub(crate) fn field_slots(descriptor: &str) -> Result<Vec<VerificationType>, Des
     }
 }
 
-/// Слоты параметров и возврата (`None` — `void`).
+/// Parameter and return slots (`None` — `void`).
 type MethodSlots = (Vec<Vec<VerificationType>>, Option<Vec<VerificationType>>);
 
-/// Дескриптор метода: слоты параметров и слоты возврата (`None` — `void`).
+/// Method descriptor: parameter slots and return slots (`None` — `void`).
 pub(crate) fn method_slots(descriptor: &str) -> Result<MethodSlots, DescError> {
     let (params, ret) = descriptor
         .split_once('(')
@@ -128,7 +128,7 @@ pub(crate) fn method_slots(descriptor: &str) -> Result<MethodSlots, DescError> {
     Ok((out, ret))
 }
 
-/// Тип элемента по дескриптору массива в стеке.
+/// Element type from an array descriptor on the stack.
 pub(crate) fn array_element(
     array: &VerificationType,
     kind: crate::insn::ArrayKind,

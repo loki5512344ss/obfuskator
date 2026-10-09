@@ -1,4 +1,4 @@
-//! Ветвления, `switch` и возвраты: абсолютные/относительные цели → метки.
+//! Branches, `switch` and returns: absolute/relative targets → labels.
 
 use ristretto_classfile::attributes::{Instruction, LookupSwitch, TableSwitch};
 
@@ -6,7 +6,7 @@ use super::Resolver;
 use crate::error::ClassfileError;
 use crate::insn::{BranchCond, Cond, Insn, Label, Prim};
 
-/// `Some` — инструкция покрыта, `None` — отдать следующим конвертерам.
+/// `Some` — the instruction is covered; `None` — hand it to the next converters.
 pub(super) fn convert_flow(
     instruction: &Instruction,
     index: u16,
@@ -52,7 +52,7 @@ fn branch(cond: BranchCond, target: u16, resolve: &Resolver<'_>) -> Result<Insn,
     Ok(Insn::Branch(cond, resolve(target)?))
 }
 
-/// Цель `switch` — номер инструкции: база плюс относительная дельта backend'а.
+/// A `switch` target — an instruction number: base plus the backend's relative delta.
 fn abs(index: u16, delta: i32, resolve: &Resolver<'_>) -> Result<Label, ClassfileError> {
     let absolute = i32::from(index)
         .checked_add(delta)

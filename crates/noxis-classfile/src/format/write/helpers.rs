@@ -1,8 +1,9 @@
-//! Хелперы сборки `InnerClasses`/`BootstrapMethods`/`MethodParameters`.
+//! Helpers building `InnerClasses`/`BootstrapMethods`/`MethodParameters`.
 //!
-//! Вынесены из `attrs`, чтобы тот держался в лимите 250 строк; логика не
-//! изменилась — только место. Каждый строит запись backend'а из элемента IR,
-//! интернируя имена/дескрипторы и резолвя индексы `CONSTANT_Class` через пул.
+//! Moved out of `attrs` so it stays within the 250-line limit; the logic is
+//! unchanged — only the location. Each builds a backend entry from an IR
+//! element, interning names/descriptors and resolving `CONSTANT_Class` indices
+//! through the pool.
 
 use ristretto_classfile::MethodAccessFlags;
 use ristretto_classfile::attributes::{
@@ -50,7 +51,7 @@ pub(super) fn bootstrap(
     })
 }
 
-/// Аргумент bootstrap-метода: те же константы, что в `ldc`, плюс `Dynamic`.
+/// A bootstrap-method argument: the same constants as in `ldc`, plus `Dynamic`.
 fn bootstrap_arg(arg: &Const, pool: &mut Pool) -> Result<u16, ClassfileError> {
     match arg {
         Const::Dynamic {
