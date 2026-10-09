@@ -175,10 +175,15 @@ impl Default for NoiseConfig {
 pub struct DebugConfig {
     /// Strip `LineNumberTable`.
     pub strip_line_numbers: bool,
+    /// Replace line numbers with plausible-but-wrong ones. Applies only
+    /// when `strip_line_numbers` is off (stripping wins).
+    pub fake_line_numbers: bool,
     /// Strip `LocalVariableTable`.
     pub strip_local_variables: bool,
     /// Replace `SourceFile` with a fake name.
     pub spoof_source_file: bool,
+    /// Remove `SourceFile` entirely instead of spoofing it.
+    pub strip_source_file: bool,
     /// Strip `Signature`/`InnerClasses`/`EnclosingMethod`.
     pub strip_signatures: bool,
 }
@@ -187,8 +192,10 @@ impl Default for DebugConfig {
     fn default() -> Self {
         Self {
             strip_line_numbers: true,
+            fake_line_numbers: false,
             strip_local_variables: true,
             spoof_source_file: true,
+            strip_source_file: false,
             strip_signatures: false,
         }
     }
