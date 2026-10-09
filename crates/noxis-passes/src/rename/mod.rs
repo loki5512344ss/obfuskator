@@ -1,20 +1,20 @@
-//! Пасс переименования: классы, поля, методы, локальные переменные, дескрипторы.
+//! The rename pass: classes, fields, methods, locals, descriptors.
 //!
-//! Это самая дешёвая и самая отдающая техника (см. `info/evo-weaknesses.md`:
-//! у EvoVis члены не переименовывались вообще, и класс читался по `javap -p`).
+//! The cheapest technique with the highest payoff (see `info/evo-weaknesses.md`:
+//! EvoVis never renamed members at all, so the class read plainly via `javap -p`).
 //!
-//! Тонкости, которые здесь учитываются:
-//! - вызов `Sub.staticMethod()` может указывать владельцем подкласс - нужны
-//!   псевдонимы (`alias`) для всей иерархии;
-//! - мостовые методы (`ACC_BRIDGE`) и ковариантные возвраты живут в одном
-//!   «семействе» метода - переименовывать их нужно разом;
-//! - `serialVersionUID`, JNI, рефлексия, сериализация - не трогаем.
+//! Subtleties handled here:
+//! - a `Sub.staticMethod()` call may name a subclass as the owner - aliases
+//!   (`alias`) are needed across the hierarchy;
+//! - bridge methods (`ACC_BRIDGE`) and covariant returns live in one method
+//!   "family" - they must be renamed together;
+//! - `serialVersionUID`, JNI, reflection, serialization stay untouched.
 
-/// Карты и стратегия назначения имён.
-mod assign;
-/// Переписывание тел методов и атрибутов.
+/// Name maps and the assignment strategy.
+pub(crate) mod assign;
+/// Rewriting method bodies and attributes.
 mod rewrite;
-/// Интеграционные тесты пасса.
+/// Pass integration tests.
 #[cfg(test)]
 mod tests;
 
@@ -35,7 +35,7 @@ const ACC_STATIC: u16 = 0x0008;
 const ACC_FINAL: u16 = 0x0010;
 const ACC_ENUM: u16 = 0x4000;
 
-/// Пасс переименования.
+/// The rename pass.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct RenamePass;
 
@@ -58,7 +58,7 @@ impl Pass for RenamePass {
         let mut maps = RenameMaps::default();
         let mut renamed_classes = 0usize;
 
-        // 1. Имена классов.
+        // 1. Class names.
         {
             let packages = generate_packages(&cfg, &mut ctx.rng("rename/packages"));
             let mut names =
@@ -91,7 +91,7 @@ impl Pass for RenamePass {
             }
         }
 
-        // 2. Простые (не-виртуальные) члены: private/static/final.
+        // 2. Simple (non-virtual) members: private/static/final.
         let mut renamed_methods = 0usize;
         let mut renamed_fields = 0usize;
 
@@ -138,8 +138,8 @@ impl Pass for RenamePass {
                             );
                             renamed_methods += 1;
                         }
-                        // Виртуальный не-final: переименовывается только вместе
-                        // со всем семейством (см. rename_virtual_families).
+                        // Non-final virtual: renamed only together with the whole
+                        // family (see rename_virtual_families).
                         _ => method_names.reserve(method.name.clone()),
                     }
                 }
@@ -179,28 +179,28 @@ impl Pass for RenamePass {
             }
         }
 
-        // 3. Виртуальные семейства - только в агрессивном режиме.
+        // 3. Virtual families - aggressive mode only.
         if cfg.rename.rename_public_members {
             renamed_methods += rename_virtual_families(program, &analysis, &mut maps, &cfg, ctx);
         }
 
-        // 4. Псевдоними для наследников.
+        // 4. Aliases for subclasses.
         maps.expand(&hierarchy, &owners);
 
-        // 5. Переписать определения и все ссылки.
+        // 5. Rewrite definitions and all references.
         let mut local_counter = 0u64;
         for class in &mut program.classes {
             let orig_owner = class.this_class.clone();
             rewrite_class(class, &orig_owner, &maps, &cfg, &mut local_counter, ctx);
         }
 
-        // 6. Ширинирование доступа: после переезда в другие пакеты иначе
-        //    возможен IllegalAccessError.
+        // 6. Access widening: moving across packages could otherwise
+        //    cause IllegalAccessError.
         if cfg.rename.widen_access {
             widen_all(program);
         }
 
-        // 7. Маппинги в отчёт (обратная деобфускация stack trace'ей).
+        // 7. Mappings for the report (stack-trace deobfuscation).
         for ((owner, name, desc), new_name) in maps.methods.iter() {
             ctx.mapping
                 .methods
@@ -217,7 +217,7 @@ impl Pass for RenamePass {
 
         let locked = analysis.locked_classes.len();
         if locked > 0 {
-            ctx.note(format!("rename: {locked} классов в keep (не тронуты)"));
+            ctx.note(format!("rename: {locked} keep-listed classes (untouched)"));
         }
 
         Ok(PassReport {
@@ -225,7 +225,7 @@ impl Pass for RenamePass {
             transformed: renamed_classes + renamed_methods + renamed_fields,
             skipped: locked,
             notes: vec![format!(
-                "классов: {renamed_classes}, методов: {renamed_methods}, полей: {renamed_fields}"
+                "classes: {renamed_classes}, methods: {renamed_methods}, fields: {renamed_fields}"
             )],
         })
     }

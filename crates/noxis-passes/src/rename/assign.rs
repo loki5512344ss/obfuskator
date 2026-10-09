@@ -158,7 +158,7 @@ fn params_of(descriptor: &str) -> Option<String> {
     Some(descriptor[..=close].to_string())
 }
 
-pub(super) fn parent_package(internal: &str) -> String {
+pub(crate) fn parent_package(internal: &str) -> String {
     match internal.rfind('/') {
         Some(i) => internal[..i].to_string(),
         None => String::new(),

@@ -72,7 +72,7 @@ impl Rng {
         }
     }
 
-    /// Перемешать срез на месте (Fisher–Yates).
+    /// Перемешать срез на месте (Fisher-Yates).
     pub fn shuffle<T>(&mut self, items: &mut [T]) {
         for i in (1..items.len()).rev() {
             let j = self.below((i + 1) as u64) as usize;

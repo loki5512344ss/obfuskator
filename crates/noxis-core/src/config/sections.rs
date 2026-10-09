@@ -148,6 +148,9 @@ impl Default for ConstantsConfig {
 pub struct NoiseConfig {
     /// How many junk classes per real one (0 = disabled).
     pub junk_ratio: usize,
+    /// Branching helper methods per junk class (their results feed a
+    /// static field so the bodies read as live code, not dead weight).
+    pub junk_methods_per_class: usize,
     /// Number of junk annotations per class.
     pub junk_annotations: usize,
     /// Weave junk classes into the reachability graph (required for them to
@@ -159,6 +162,7 @@ impl Default for NoiseConfig {
     fn default() -> Self {
         Self {
             junk_ratio: 0,
+            junk_methods_per_class: 3,
             junk_annotations: 0,
             weave_reachable: true,
         }

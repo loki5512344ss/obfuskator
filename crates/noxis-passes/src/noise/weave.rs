@@ -1,22 +1,23 @@
-//! Вплетание junk-классов в граф достижимости живых методов.
+//! Weaving junk classes into the reachability graph of live methods.
 
 use noxis_analysis::ClassHierarchy;
 use noxis_classfile::{Insn, InvokeKind, Program, compute_frames};
 use noxis_core::{CoreError, PassId};
 
-use super::JUNK_ENTRY;
+/// The woven call descriptor (entries are always `()V`).
+const WOVEN_DESCRIPTOR: &str = "()V";
 
-/// Вплетает вызов первого junk-класса в первый метод с кодом.
+/// Weave a call of the first junk entry into the first method with code.
 ///
-/// Вызов встаёт перед терминалом (`Return`/`AReturn`/`AThrow`), чтобы не
-/// породить недостижимый хвост без фреймов; фреймы пересчитываются.
+/// The call lands before the terminal (`Return`/`AReturn`/`AThrow`) so it
+/// never strands an unreachable tail without frames; frames are recomputed.
 pub(super) fn weave_first_reachable(
     program: &mut Program,
     real_classes: usize,
-    junk_names: &[String],
+    entries: &[(String, String)],
 ) -> Result<usize, CoreError> {
-    let missing = || CoreError::pass(PassId::Noise, "цель вплетания пропала");
-    let Some(owner) = junk_names.first() else {
+    let missing = || CoreError::pass(PassId::Noise, "weave target vanished");
+    let Some((owner, entry)) = entries.first() else {
         return Err(missing());
     };
     let target = program.classes[..real_classes.min(program.classes.len())]
@@ -39,8 +40,8 @@ pub(super) fn weave_first_reachable(
     let call = Insn::Invoke {
         kind: InvokeKind::Static,
         owner: owner.clone(),
-        name: JUNK_ENTRY.0.to_string(),
-        descriptor: JUNK_ENTRY.1.to_string(),
+        name: entry.clone(),
+        descriptor: WOVEN_DESCRIPTOR.to_string(),
         itf: false,
     };
     {

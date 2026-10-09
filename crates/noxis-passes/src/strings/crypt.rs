@@ -7,7 +7,7 @@
 use noxis_classfile::{Const, Insn, InvokeKind};
 use noxis_runtime::{DECODER_DESC, DECODER_METHOD};
 
-/// Разбить строку на чанки по границе символов (1–3 штуки).
+/// Разбить строку на чанки по границе символов (1-3 штуки).
 pub(super) fn split_chunks(text: &str, split_above: usize) -> Vec<String> {
     let chars: Vec<char> = text.chars().collect();
     if chars.len() <= split_above.max(1) {

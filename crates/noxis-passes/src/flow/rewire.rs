@@ -33,7 +33,7 @@ fn negate_cond(cond: Cond) -> Cond {
 
 /// Turn `if-cond T` into `if-not SKIP; goto T; SKIP:` (`butterfly`).
 ///
-/// `rate` is a 0–100 percentage applied per branch. Semantics are unchanged:
+/// `rate` is a 0-100 percentage applied per branch. Semantics are unchanged:
 /// the inverted branch skips a `goto` to the original target, so the taken /
 /// not-taken destinations are exactly the old ones. A `nop` pads the fresh
 /// mark: whatever follows (an original mark, even a handler entry with its

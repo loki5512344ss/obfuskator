@@ -97,7 +97,7 @@ fn build_frame(
             })?;
             if !(1..=3).contains(&count) {
                 return Err(ClassfileError::Write(format!(
-                    "append-кадр на {count} local'ов (нужно 1–3)"
+                    "append-кадр на {count} local'ов (нужно 1-3)"
                 )));
             }
             RtFrame::AppendFrame {
