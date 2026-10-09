@@ -26,7 +26,7 @@
 | `StringDecoderGenerator` | 205 | генерит класс-декодер | `noxis-runtime` + P2 генератор |
 | `ObfuscatorRunner` | 202 | конвейер, оркестрация | `noxis-passes::standard_pipeline` ✅ |
 | `NumberObfuscator` | 185 | константы / opaque | пасс `constants` |
-| `ControlFlowObfuscator` | 183 | flattening | пасс `flow` (ждёт `StackMapTable`) |
+| `ControlFlowObfuscator` | 183 | flattening | пасс `flow` ✅ (4 схемы, свои кадры) |
 | `FabricKeepRuleScanner` | 147 | keep из конфига Fabric | `noxis-analysis::keep` ✅ |
 | `Main` | 134 | CLI-точки | `noxis` (clap) |
 | `StringEncryptor` | 132 | AES-128 строк + chunk'и | `noxis-runtime::scheme` ✅ |

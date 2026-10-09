@@ -29,7 +29,7 @@
 | пассы: rename, resources, strings, constants, noise, debug | ✅ |
 | верификация: red-паттерны, `java -Xverify:all`, метрики | ✅ |
 | CLI (`obfuscate` / `analyze` / `patterns`) | ✅ |
-| пасс flow (кадры готовы, схем флаттенинга пока нет) | 🚧 |
+| пасс flow (кадры готовы, 4 схемы: state-spread, computed-switch, butterfly, exception-goto) | ✅ |
 
 Подробности в [`docs/architecture.md`](docs/architecture.md), план в [`todo.md`](todo.md).
 
@@ -50,12 +50,8 @@ cargo run -p noxis -- patterns --input output.jar
 ```
 
 `obfuscate` по умолчанию включает все готовые пассы. Флаги `--no-rename`,
-`--no-strings`, `--no-constants`, `--no-noise`, `--no-resources`, `--no-debug-info`
-выключают их по отдельности. `--no-flow` честно падает с ошибкой: пасса пока нет.
-
-Одно `cargo build` уже гоняет проверку структуры кода: `.rs`-файл длиннее
-250 строк или директория с больше чем 4 `.rs`-файлами ломают сборку.
-Документация (`docs/**`) под это правило не попадает. Правила в [`docs/README.md`](docs/README.md).
+`--no-strings`, `--no-constants`, `--no-noise`, `--no-resources`, `--no-debug-info`,
+`--no-flow` выключают их по отдельности.
 
 ## Структура
 

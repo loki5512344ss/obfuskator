@@ -1,10 +1,11 @@
 //! # noxis-passes
 //!
-//! Трансформации байткода. Сборка конвейера из пассов (`standard_pipeline`)
-//! живёт здесь же: ядро (`noxis-core`) знает только контракт [`Pass`].
+//! Bytecode transformations. The pipeline assembly (`standard_pipeline`)
+//! lives here as well: the core (`noxis-core`) only knows the [`Pass`] contract.
 
 pub mod constants;
 pub mod debug;
+pub mod flow;
 pub mod namegen;
 pub mod noise;
 pub mod rename;
@@ -15,24 +16,22 @@ use noxis_core::Pass;
 
 pub use constants::ConstantsPass;
 pub use debug::DebugInfoPass;
+pub use flow::FlowPass;
 pub use namegen::NameGenerator;
 pub use noise::NoisePass;
 pub use rename::RenamePass;
 pub use resources::ResourcesPass;
 pub use strings::StringsPass;
 
-/// Стандартный конвейер в порядке [`docs/architecture.md`](../../docs/architecture.md):
+/// Standard pipeline in [`docs/architecture.md`](../../docs/architecture.md) order:
 /// `rename → resources → strings → constants → flow → noise → debug`.
-///
-/// Нереализованные пассы просто не добавлены — порядок уже соблюдён,
-/// поэтому каждый следующий пасс вставляется на своё место, а не
-/// дописывается в конец.
 pub fn standard_pipeline() -> noxis_core::Pipeline {
     noxis_core::Pipeline::new()
         .push(Box::new(RenamePass) as Box<dyn Pass>)
         .push(Box::new(ResourcesPass) as Box<dyn Pass>)
         .push(Box::new(StringsPass) as Box<dyn Pass>)
         .push(Box::new(ConstantsPass) as Box<dyn Pass>)
+        .push(Box::new(FlowPass) as Box<dyn Pass>)
         .push(Box::new(NoisePass) as Box<dyn Pass>)
         .push(Box::new(DebugInfoPass) as Box<dyn Pass>)
 }
@@ -70,6 +69,7 @@ mod tests {
     fn standard_pipeline_runs_end_to_end_in_order() {
         let mut ctx = Context::new(Config {
             seed: Some(1),
+            enable: vec![PassId::Flow],
             ..Config::default()
         });
         let mut program = sample();
@@ -86,6 +86,7 @@ mod tests {
                 PassId::Resources,
                 PassId::Strings,
                 PassId::Constants,
+                PassId::Flow,
                 PassId::Noise,
                 PassId::DebugInfo
             ]

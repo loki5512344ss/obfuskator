@@ -35,7 +35,7 @@ pub(super) fn emit_frames(
             Some(previous) => target
                 .checked_sub(previous)
                 .and_then(|delta| delta.checked_sub(1))
-                .ok_or_else(|| merger.invalid("кадры не по порядку"))?,
+                .ok_or_else(|| merger.invalid("frames out of order"))?,
         };
         out.push(select(delta, &state.locals, &previous_locals, &state.stack));
         previous_locals = state.locals.clone();
@@ -54,13 +54,17 @@ fn select(
     // otherwise halves would produce `Append{[Top, Long]}`.
     let current = vars(locals);
     let base = vars(previous);
+    // The operand stack needs the same collapsing: a `long`/`double` is one
+    // entry (`javac` writes `[Double, Integer]`, not `[Double, Top, Integer]`);
+    // an explicit half without its value is rejected by HotSpot.
+    let stack = stack_vars(stack);
     if current == base {
         if stack.is_empty() {
             return StackMapFrame::Same {
                 offset_delta: delta,
             };
         }
-        if let [local] = stack {
+        if let [local] = stack.as_slice() {
             return StackMapFrame::SameLocals {
                 offset_delta: delta,
                 local: local.clone(),
@@ -92,6 +96,30 @@ fn select(
         locals: current,
         stack: stack.to_vec(),
     }
+}
+
+/// Stack entries → values: `[Double, Top]` — one entry (like `javac`).
+///
+/// Unlike [`vars`], no trailing-`Top` trimming: every stack entry is live by
+/// construction, and dropping one would corrupt the depth.
+fn stack_vars(stack: &[VerificationType]) -> Vec<VerificationType> {
+    let mut out = Vec::with_capacity(stack.len());
+    let mut index = 0;
+    while index < stack.len() {
+        match &stack[index] {
+            VerificationType::Long | VerificationType::Double
+                if stack.get(index + 1) == Some(&VerificationType::Top) =>
+            {
+                out.push(stack[index].clone());
+                index += 2;
+            }
+            other => {
+                out.push(other.clone());
+                index += 1;
+            }
+        }
+    }
+    out
 }
 
 /// Slots → variables: `[Long, Top]` — one entry; trailing `Top`s — gone.
