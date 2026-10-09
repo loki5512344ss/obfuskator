@@ -2,7 +2,7 @@
 //!
 //! Our IR stores `offset_delta` in instruction numbers; the backend recomputes
 //! them into bytes on `to_bytes`. The compact form (`Same`/`SameLocals`) is valid
-//! only when the **byte** delta is ≤ 63 — otherwise the extended form is needed.
+//! only when the **byte** delta is ≤ 63 - otherwise the extended form is needed.
 //! We choose by the byte delta: bytes are computed from the current method's layout.
 
 use ristretto_classfile::attributes::{StackFrame as RtFrame, VerificationType as RtType};
@@ -14,7 +14,7 @@ use crate::format::{StackMapFrame, VerificationType};
 /// The byte offset of an instruction's start (for computing frame deltas).
 type ByteOf<'a> = &'a (dyn Fn(u32) -> Result<u16, ClassfileError> + 'a);
 
-/// IR frames → backend frames (index deltas — as-is).
+/// IR frames → backend frames (index deltas - as-is).
 pub(super) fn convert_frames(
     frames: &[StackMapFrame],
     pool: &mut Pool,

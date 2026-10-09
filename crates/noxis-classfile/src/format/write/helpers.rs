@@ -1,7 +1,7 @@
 //! Helpers building `InnerClasses`/`BootstrapMethods`/`MethodParameters`.
 //!
 //! Moved out of `attrs` so it stays within the 250-line limit; the logic is
-//! unchanged — only the location. Each builds a backend entry from an IR
+//! unchanged - only the location. Each builds a backend entry from an IR
 //! element, interning names/descriptors and resolving `CONSTANT_Class` indices
 //! through the pool.
 

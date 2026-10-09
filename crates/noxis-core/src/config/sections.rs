@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum NameStyle {
-    /// `a`, `b`, ... `aa` — short Latin.
+    /// `a`, `b`, ... `aa` - short Latin.
     ShortLatin,
-    /// `I`, `l`, `O`, `0` — visually identical.
+    /// `I`, `l`, `O`, `0` - visually identical.
     IlO0,
     /// Random Unicode names (surrogates are valid in modified UTF-8).
     Unicode,
@@ -17,7 +17,7 @@ pub enum NameStyle {
     MixedLatin,
     /// Pseudo-meaningful words from another project (misdirection).
     DecoyWords,
-    /// Plausible names: `TextureCache`, `resolveToken` — blends in as
+    /// Plausible names: `TextureCache`, `resolveToken` - blends in as
     /// ordinary application code instead of obvious noise.
     Plausible,
 }

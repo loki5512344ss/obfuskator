@@ -17,7 +17,7 @@ pub fn field_key(owner: &str, name: &str, descriptor: &str) -> String {
 /// Таблицы «оригинал → обфусцированное».
 ///
 /// Нужна по двум причинам: (1) перевод stack trace'ей обратно в читаемые имена
-/// (аналог ZKM Stack Trace Translate), (2) аудит — что именно поменялось.
+/// (аналог ZKM Stack Trace Translate), (2) аудит - что именно поменялось.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Mapping {
     /// internal name класса → новый internal name

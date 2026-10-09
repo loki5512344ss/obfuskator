@@ -1,8 +1,8 @@
-//! Пасс шифрования строк: `Const::String` → вызовы рантайм-декодера.
+//! The strings pass: `Const::String` becomes runtime-decoder calls.
 //!
-//! Схема строки выбирается ротацией (`salt % n`), salt детерминирован
-//! (KDF или RNG-поток — см. `derive_key`). Декодер генерируется один на
-//! программу и только если была зашифрована хотя бы одна строка.
+//! The scheme rotates per string (`salt % n`), the salt is deterministic
+//! (KDF or RNG stream - see `derive_key`). The decoder is generated once per
+//! program and only if at least one string was encrypted.
 
 mod crypt;
 
@@ -12,14 +12,14 @@ mod tests;
 use std::collections::BTreeMap;
 
 use noxis_analysis::ClassHierarchy;
-use noxis_classfile::{Const, Insn, Program, compute_frames};
+use noxis_classfile::{Const, Insn, MAX_METHOD_INSNS, Program, compute_frames};
 use noxis_core::{Context, CoreError, NameStyle, Pass, PassId, PassReport, derive_seed};
 use noxis_runtime::{Scheme, decoder_class, decoder_owner, encrypt};
 
 use crate::namegen::NameGenerator;
 use crypt::{decode_sequence, salt_for_scheme, split_chunks};
 
-/// Пасс шифрования строк.
+/// The string encryption pass.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct StringsPass;
 
@@ -35,9 +35,9 @@ impl Pass for StringsPass {
             schemes.push(Scheme::parse(name).map_err(|e| pass_error(e.to_string()))?);
         }
         if schemes.is_empty() {
-            return Err(pass_error("нет схем шифрования"));
+            return Err(pass_error("no encryption schemes"));
         }
-        // Фаза 1: собрать все шифруемые строки (позиция + текст).
+        // Phase 1: collect every encryptable string (position + text).
         let mut targets: Vec<(usize, usize, usize, String)> = Vec::new();
         let mut skipped = 0usize;
         for (ci, class) in program.classes.iter().enumerate() {
@@ -60,10 +60,10 @@ impl Pass for StringsPass {
             return Ok(report(
                 0,
                 skipped,
-                vec!["нет строк для шифрования".to_string()],
+                vec!["no strings to encrypt".to_string()],
             ));
         }
-        // Фаза 2: зашифровать и подставить последовательности вызовов.
+        // Phase 2: encrypt and substitute call sequences.
         let master = ctx.master_seed;
         let mut rng = ctx.rng("strings");
         let owner = decoder_name(ctx, program);
@@ -83,49 +83,64 @@ impl Pass for StringsPass {
             replacements.insert((*ci, *mi, *ii), decode_sequence(&owner, &parts));
         }
         let mut mutated: Vec<(usize, usize)> = Vec::new();
+        let mut applied = 0usize;
+        let mut per_method: BTreeMap<(usize, usize), usize> = BTreeMap::new();
+        for (ci, mi, _, _) in &targets {
+            *per_method.entry((*ci, *mi)).or_default() += 1;
+        }
         for (ci, class) in program.classes.iter_mut().enumerate() {
             for (mi, method) in class.methods.iter_mut().enumerate() {
                 let Some(code) = method.code.as_mut() else {
                     continue;
                 };
-                let mut fresh = Vec::with_capacity(code.insns.len());
+                let original = std::mem::take(&mut code.insns);
+                let method_targets = per_method.get(&(ci, mi)).copied().unwrap_or(0);
+                let mut fresh = Vec::with_capacity(original.len());
                 let mut touched = false;
-                for (ii, insn) in code.insns.drain(..).enumerate() {
+                for (ii, insn) in original.iter().enumerate() {
                     if let Some(sequence) = replacements.remove(&(ci, mi, ii)) {
                         fresh.extend(sequence);
                         touched = true;
                     } else {
-                        fresh.push(insn);
+                        fresh.push(insn.clone());
                     }
                 }
+                if fresh.len() > MAX_METHOD_INSNS {
+                    // Would risk the 64KB writer ceiling: keep the original
+                    // code (and its strings) untouched.
+                    code.insns = original;
+                    skipped += 1;
+                    continue;
+                }
+                code.insns = fresh;
                 if touched {
+                    applied += method_targets;
                     code.max_stack = code.max_stack.saturating_add(2);
                     mutated.push((ci, mi));
                 }
-                code.insns = fresh;
             }
         }
-        // Фаза 3: класс-декодер один на программу.
+        // Phase 3: one decoder class per program.
         let scheme_names: Vec<&str> = cfg.schemes.iter().map(String::as_str).collect();
         let decoder =
             decoder_class(&owner, master, &scheme_names).map_err(|e| pass_error(e.to_string()))?;
         program.classes.push(decoder);
-        ctx.note(format!("декодер строк: {owner}"));
-        // Фаза 4: фреймы затронутых методов.
+        ctx.note(format!("string decoder: {owner}"));
+        // Phase 4: frames of the touched methods.
         let hierarchy = ClassHierarchy::build(program);
         for (ci, mi) in &mutated {
             let (name, snapshot) = {
                 let class = program
                     .classes
                     .get(*ci)
-                    .ok_or_else(|| pass_error("класс пропал"))?;
+                    .ok_or_else(|| pass_error("class vanished"))?;
                 (
                     class.this_class.clone(),
                     class
                         .methods
                         .get(*mi)
                         .cloned()
-                        .ok_or_else(|| pass_error("метод пропал"))?,
+                        .ok_or_else(|| pass_error("method vanished"))?,
                 )
             };
             let frames = compute_frames(&name, &snapshot, &hierarchy)
@@ -135,16 +150,13 @@ impl Pass for StringsPass {
                 .get_mut(*ci)
                 .and_then(|c| c.methods.get_mut(*mi))
                 .and_then(|m| m.code.as_mut())
-                .ok_or_else(|| pass_error("метод пропал"))?
+                .ok_or_else(|| pass_error("method vanished"))?
                 .frames = frames;
         }
         Ok(report(
-            targets.len(),
+            applied,
             skipped,
-            vec![format!(
-                "зашифровано строк: {}, декодер: {owner}",
-                targets.len()
-            )],
+            vec![format!("strings encrypted: {applied}, decoder: {owner}")],
         ))
     }
 }
@@ -162,12 +174,12 @@ fn pass_error(msg: impl Into<String>) -> CoreError {
     CoreError::pass(PassId::Strings, msg)
 }
 
-/// Строка подпадает под `skip`-паттерны конфига.
+/// A string matches the `skip` patterns of the config.
 fn is_skipped(text: &str, skip: &[String]) -> bool {
     skip.iter().any(|pattern| text.contains(pattern))
 }
 
-/// Salt чанка: KDF от позиции или RNG-поток (см. `derive_key`).
+/// A chunk salt: KDF from the position or an RNG stream (see `derive_key`).
 fn next_salt(rng: &mut noxis_core::Rng, master: u64, counter: &mut u64, derive: bool) -> u64 {
     let value = if derive {
         derive_seed(master, "strings/salt", *counter)
@@ -178,7 +190,7 @@ fn next_salt(rng: &mut noxis_core::Rng, master: u64, counter: &mut u64, derive: 
     value
 }
 
-/// Детерминированное имя декодера без коллизий с классами программы.
+/// A collision-free deterministic decoder name.
 fn decoder_name(ctx: &mut Context, program: &Program) -> String {
     let mut names = NameGenerator::new(ctx.rng("strings/decoder"), NameStyle::ShortLatin);
     for class in &program.classes {

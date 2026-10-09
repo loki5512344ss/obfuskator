@@ -88,7 +88,7 @@ pub enum InvokeKind {
     Interface,
 }
 
-/// Type conversion (`i2l`, `f2b`, ... — JVMS §6.5.i2<b|c|s|l|f|d>).
+/// Type conversion (`i2l`, `f2b`, ... - JVMS §6.5.i2<b|c|s|l|f|d>).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Convert {
     I2L,

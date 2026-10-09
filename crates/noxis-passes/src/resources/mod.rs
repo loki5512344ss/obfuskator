@@ -1,8 +1,8 @@
 //! Пасс ресурсов: патч текстовых файлов архива по маппингу классов.
 //!
 //! Без этого обфускация Fabric-мода просто не стартует: `fabric.mod.json`
-//! хранит main-class точкой, `*.mixins.json` — пути внутренними именами,
-//! refmap и access widener — тоже. Материал: `info/evo-weaknesses.md` §3/§8
+//! хранит main-class точкой, `*.mixins.json` - пути внутренними именами,
+//! refmap и access widener - тоже. Материал: `info/evo-weaknesses.md` §3/§8
 //! (у разобранного образца ресурсы вообще не трогали).
 //!
 //! Замена **границная**, а не подстрочная: `org/example/Foo` не должен
@@ -33,7 +33,7 @@ const TEXT_EXTS: [&str; 9] = [
     ".accesswidener",
 ];
 
-/// Service loader'ы: файла без расширения, но каждая строка — имя класса.
+/// Service loader'ы: файла без расширения, но каждая строка - имя класса.
 const SERVICES_PREFIX: &str = "META-INF/services/";
 
 /// Пасс патча ресурсов.
@@ -52,7 +52,7 @@ impl Pass for ResourcesPass {
                 pass: PassId::Resources,
                 transformed: 0,
                 skipped: program.resources.len(),
-                notes: vec!["маппинг классов пуст — ресурсы не тронуты".into()],
+                notes: vec!["маппинг классов пуст - ресурсы не тронуты".into()],
             });
         }
 
@@ -142,7 +142,7 @@ fn replace_delimited(text: &str, old: &str, new: &str, dotted: bool) -> String {
             continue;
         }
 
-        // Совпадение частичное — пропускаем первый символ и ищем дальше.
+        // Совпадение частичное - пропускаем первый символ и ищем дальше.
         let mut chars = rest[at..].chars();
         out.push_str(before);
         match chars.next() {

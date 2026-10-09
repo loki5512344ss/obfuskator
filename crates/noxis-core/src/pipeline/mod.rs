@@ -46,7 +46,7 @@ pub trait Pass: Send + Sync {
 
 /// Упорядоченная цепочка пассов.
 ///
-/// Порядок — не деталь: см. `docs/architecture.md` (rename → resources →
+/// Порядок - не деталь: см. `docs/architecture.md` (rename → resources →
 /// strings → constants → flow → noise → debug), иначе часть техник ломает
 /// предыдущие или работает по уже мёртвым именам.
 #[derive(Default)]
@@ -88,7 +88,7 @@ impl Pipeline {
         for pass in &self.passes {
             let id = pass.id();
             if !ctx.config.is_enabled(id) {
-                tracing::info!(target: "noxis", pass = %id, "пасс выключен — пропущен");
+                tracing::info!(target: "noxis", pass = %id, "пасс выключен - пропущен");
                 continue;
             }
             tracing::info!(target: "noxis", pass = %id, "пасс запущен");

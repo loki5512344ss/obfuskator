@@ -92,7 +92,7 @@ fn binary_long(first: i64, second: i64, op: Arith) -> Vec<Insn> {
     ]
 }
 
-/// `v = ((v >> 1) << 1) | (v & 1)` — works for any value, including negatives.
+/// `v = ((v >> 1) << 1) | (v & 1)` - works for any value, including negatives.
 fn shift_form(value: i32) -> Vec<Insn> {
     vec![
         Insn::Const(Const::Int(value >> 1)),
@@ -137,7 +137,7 @@ fn shift_form_long(value: i64) -> Vec<Insn> {
 pub(super) fn opaque_true(dead: u32, merge: u32, rng: &mut Rng) -> Vec<Insn> {
     let constant = rng.next_u64() as i32;
     vec![
-        // P = ((C*C) + C) & 1 — even, so always 0.
+        // P = ((C*C) + C) & 1 - even, so always 0.
         Insn::Const(Const::Int(constant)),
         Insn::Dup,
         Insn::Binary {
@@ -154,7 +154,7 @@ pub(super) fn opaque_true(dead: u32, merge: u32, rng: &mut Rng) -> Vec<Insn> {
             prim: Prim::Int,
             op: Arith::And,
         },
-        // P != 0 never holds — the branch into DEAD is not taken, value popped.
+        // P != 0 never holds - the branch into DEAD is not taken, value popped.
         Insn::Branch(BranchCond::Zero(Cond::Ne), dead),
         Insn::Goto(merge),
         Insn::Mark(dead),

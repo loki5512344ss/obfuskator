@@ -2,7 +2,7 @@
 //!
 //! Branch offsets come from the backend (absolute for `if*`/`goto`, relative to
 //! the instruction start for `switch`), so conversion takes a resolver from an
-//! offset to a [`Label`](crate::insn::Label) — the calling code assigns labels.
+//! offset to a [`Label`](crate::insn::Label) - the calling code assigns labels.
 
 mod basic;
 mod flow;
@@ -17,7 +17,7 @@ use crate::insn::{Insn, Label};
 /// Resolves an absolute bytecode offset into a label.
 pub(super) type Resolver<'a> = dyn Fn(u16) -> Result<Label, ClassfileError> + 'a;
 
-/// Convert one instruction. `index` — its number in the method body (`switch` needs it).
+/// Convert one instruction. `index` - its number in the method body (`switch` needs it).
 pub(super) fn convert(
     instruction: &Instruction,
     index: u16,

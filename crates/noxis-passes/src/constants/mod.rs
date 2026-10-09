@@ -1,8 +1,8 @@
-//! Пасс шифрования констант: числа → арифметика, плюс opaque-предикаты.
+//! The constants pass: numbers become arithmetic, plus opaque predicates.
 //!
-//! `float`/`double` не трогаются (битовая точность через целые — отдельно).
-//! Мелочь из `iconst`-диапазона (`-1..=5`, `0L/1L`) остаётся как есть:
-//! её шифрование только раздувает горячий код.
+//! `float`/`double` are left alone (bit-exact paths through integers are
+//! separate). Trivia from the `iconst` range (`-1..=5`, `0L/1L`) stays as is:
+//! encrypting it only bloats hot code.
 
 mod forms;
 
@@ -10,12 +10,12 @@ mod forms;
 mod tests;
 
 use noxis_analysis::ClassHierarchy;
-use noxis_classfile::{Const, Insn, Program, compute_frames};
+use noxis_classfile::{Const, Insn, MAX_METHOD_INSNS, Program, compute_frames};
 use noxis_core::{Context, CoreError, Pass, PassId, PassReport};
 
 use forms::{Scheme, encrypt_int, encrypt_long, opaque_true};
 
-/// Пасс шифрования констант.
+/// The constants encryption pass.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct ConstantsPass;
 
@@ -30,17 +30,18 @@ impl Pass for ConstantsPass {
         for name in &cfg.schemes {
             schemes.push(
                 Scheme::parse(name)
-                    .ok_or_else(|| pass_error(format!("неизвестная схема `{name}`")))?,
+                    .ok_or_else(|| pass_error(format!("unknown scheme `{name}`")))?,
             );
         }
         if schemes.is_empty() {
-            return Err(pass_error("нет схем шифрования"));
+            return Err(pass_error("no encryption schemes"));
         }
         let mut rng = ctx.rng("constants");
         let mut replaced = 0usize;
         let mut predicates = 0usize;
         let mut skipped = 0usize;
         let mut mutated: Vec<(usize, usize)> = Vec::new();
+        let mut oversized: Vec<(usize, usize)> = Vec::new();
 
         for (ci, class) in program.classes.iter_mut().enumerate() {
             if cfg
@@ -55,24 +56,33 @@ impl Pass for ConstantsPass {
                 let Some(code) = method.code.as_mut() else {
                     continue;
                 };
-                let mut fresh = Vec::with_capacity(code.insns.len());
+                let original = std::mem::take(&mut code.insns);
+                let mut fresh = Vec::with_capacity(original.len());
                 let mut touched = false;
-                for insn in code.insns.drain(..) {
+                for insn in &original {
                     match insn {
-                        Insn::Const(Const::Int(value)) if !is_tiny_int(value) => {
+                        Insn::Const(Const::Int(value)) if !is_tiny_int(*value) => {
                             let scheme = schemes[rng.below(schemes.len() as u64) as usize];
-                            fresh.extend(encrypt_int(value, scheme, &mut rng));
+                            fresh.extend(encrypt_int(*value, scheme, &mut rng));
                             replaced += 1;
                             touched = true;
                         }
-                        Insn::Const(Const::Long(value)) if value != 0 && value != 1 => {
+                        Insn::Const(Const::Long(value)) if *value != 0 && *value != 1 => {
                             let scheme = schemes[rng.below(schemes.len() as u64) as usize];
-                            fresh.extend(encrypt_long(value, scheme, &mut rng));
+                            fresh.extend(encrypt_long(*value, scheme, &mut rng));
                             replaced += 1;
                             touched = true;
                         }
-                        other => fresh.push(other),
+                        other => fresh.push(other.clone()),
                     }
+                }
+                if fresh.len() > MAX_METHOD_INSNS {
+                    // Would risk the 64KB writer ceiling: keep the original
+                    // code untouched (predicates included) and count a skip.
+                    code.insns = original;
+                    skipped += 1;
+                    oversized.push((ci, mi));
+                    continue;
                 }
                 code.insns = fresh;
                 if touched {
@@ -84,6 +94,7 @@ impl Pass for ConstantsPass {
         insert_predicates(
             program,
             &mut mutated,
+            &oversized,
             cfg.max_predicates,
             &mut rng,
             &mut predicates,
@@ -96,15 +107,17 @@ impl Pass for ConstantsPass {
     }
 }
 
-/// Мелочь, которую шифровать невыгодно (уже `iconst`).
+/// Trivia that is not worth encrypting (already `iconst`).
 fn is_tiny_int(value: i32) -> bool {
     (-1..=5).contains(&value)
 }
 
-/// Opaque-предикаты в начало методов с кодом (не больше лимита на метод).
+/// Opaque predicates at the top of methods with code (at most the limit).
+/// Oversized methods stay fully untouched, predicates included.
 fn insert_predicates(
     program: &mut Program,
     mutated: &mut Vec<(usize, usize)>,
+    oversized: &[(usize, usize)],
     max_predicates: usize,
     rng: &mut noxis_core::Rng,
     predicates: &mut usize,
@@ -116,6 +129,9 @@ fn insert_predicates(
     for ci in 0..classes {
         let methods = program.classes[ci].methods.len();
         for mi in 0..methods {
+            if oversized.contains(&(ci, mi)) {
+                continue;
+            }
             let empty_or_missing = program.classes[ci].methods[mi]
                 .code
                 .as_ref()
@@ -123,7 +139,7 @@ fn insert_predicates(
             if empty_or_missing {
                 continue;
             }
-            let missing = || pass_error("метод пропал при вставке предиката");
+            let missing = || pass_error("method vanished while inserting a predicate");
             let mut top = program.classes[ci]
                 .methods
                 .get(mi)
@@ -166,7 +182,7 @@ fn insert_predicates(
     Ok(())
 }
 
-/// Пересчитать фреймы затронутого метода.
+/// Recompute the frames of a touched method.
 fn refresh_frames(
     program: &mut Program,
     ci: usize,
@@ -177,14 +193,14 @@ fn refresh_frames(
         let class = program
             .classes
             .get(ci)
-            .ok_or_else(|| pass_error("класс пропал"))?;
+            .ok_or_else(|| pass_error("class vanished"))?;
         (
             class.this_class.clone(),
             class
                 .methods
                 .get(mi)
                 .cloned()
-                .ok_or_else(|| pass_error("метод пропал"))?,
+                .ok_or_else(|| pass_error("method vanished"))?,
         )
     };
     let frames =
@@ -194,7 +210,7 @@ fn refresh_frames(
         .get_mut(ci)
         .and_then(|c| c.methods.get_mut(mi))
         .and_then(|m| m.code.as_mut())
-        .ok_or_else(|| pass_error("метод пропал"))?
+        .ok_or_else(|| pass_error("method vanished"))?
         .frames = frames;
     Ok(())
 }
@@ -205,7 +221,7 @@ fn report(replaced: usize, predicates: usize, skipped: usize) -> PassReport {
         transformed: replaced + predicates,
         skipped,
         notes: vec![format!(
-            "констант разбито: {replaced}, предикатов: {predicates}"
+            "constants split: {replaced}, predicates: {predicates}"
         )],
     }
 }

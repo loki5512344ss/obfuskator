@@ -13,10 +13,10 @@ pub struct Args {
     /// Output jar.
     #[arg(short, long)]
     pub output: PathBuf,
-    /// TOML config (without it — the Standard profile).
+    /// TOML config (without it - the Standard profile).
     #[arg(short, long)]
     pub config: Option<PathBuf>,
-    /// Master seed (deterministic by default — taken from the config).
+    /// Master seed (deterministic by default - taken from the config).
     #[arg(long)]
     pub seed: Option<u64>,
     /// Where to write the JSON report (next to the output by default).

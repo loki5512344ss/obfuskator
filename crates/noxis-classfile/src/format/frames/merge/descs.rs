@@ -31,7 +31,7 @@ pub(crate) fn split_array(descriptor: &str) -> Option<(usize, &str)> {
     Some((dims, descriptor[dims..].trim_end_matches(';')))
 }
 
-/// Slots for a single field descriptor (`long`/`double` — pair with `Top`).
+/// Slots for a single field descriptor (`long`/`double` - pair with `Top`).
 pub(crate) fn field_slots(descriptor: &str) -> Result<Vec<VerificationType>, DescError> {
     let mut chars = descriptor.chars();
     match chars.next() {
@@ -57,10 +57,10 @@ pub(crate) fn field_slots(descriptor: &str) -> Result<Vec<VerificationType>, Des
     }
 }
 
-/// Parameter and return slots (`None` — `void`).
+/// Parameter and return slots (`None` - `void`).
 type MethodSlots = (Vec<Vec<VerificationType>>, Option<Vec<VerificationType>>);
 
-/// Method descriptor: parameter slots and return slots (`None` — `void`).
+/// Method descriptor: parameter slots and return slots (`None` - `void`).
 pub(crate) fn method_slots(descriptor: &str) -> Result<MethodSlots, DescError> {
     let (params, ret) = descriptor
         .split_once('(')

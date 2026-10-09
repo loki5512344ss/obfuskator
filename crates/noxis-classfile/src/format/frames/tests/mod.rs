@@ -1,4 +1,4 @@
-//! Unit-тесты `compute_frames` на синтезированном IR.
+//! Unit tests for `compute_frames` on synthesized IR.
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
@@ -7,8 +7,8 @@ use crate::Hierarchy;
 use crate::insn::{BranchCond, Cond, Const, Insn, Prim, SlotKind};
 use crate::model::{Code, ExceptionHandler, Method};
 
-/// Пустая иерархия: всё неизвестное — наследники `Object` (для LUB хватает).
-struct NoHierarchy;
+/// Empty hierarchy: everything unknown descends from `Object` (enough for LUB).
+pub(super) struct NoHierarchy;
 
 impl Hierarchy for NoHierarchy {
     fn superclass(&self, _class: &str) -> Option<String> {
@@ -16,7 +16,7 @@ impl Hierarchy for NoHierarchy {
     }
 }
 
-fn code_method(
+pub(super) fn code_method(
     name: &str,
     descriptor: &str,
     max_stack: u16,
@@ -40,7 +40,7 @@ fn code_method(
     }
 }
 
-/// Ветвь → два кадра (`Same`, `SameLocals`).
+/// A branch emits two frames (`Same`, `SameLocals`).
 #[test]
 fn branch_emits_same_frames() {
     let mut method = code_method(
@@ -76,7 +76,11 @@ fn branch_emits_same_frames() {
     );
 }
 
-/// `try/catch`: handler получает `Full`, продолжение — `Append`.
+/// `try/catch`: the handler gets `Full`, the continuation - `Same`.
+///
+/// Slot 1 is written only inside the handler, so the join keeps `Top` there
+/// (like `javac`): a precise type would reject the inflow that never wrote
+/// it (`Type top is not assignable`).
 #[test]
 fn handler_emits_full_frame() {
     let method = code_method(
@@ -115,15 +119,12 @@ fn handler_emits_full_frame() {
                 locals: vec![VerificationType::Integer],
                 stack: vec![VerificationType::Object("java/lang/Exception".to_string())],
             },
-            StackMapFrame::Append {
-                offset_delta: 2,
-                locals: vec![VerificationType::Object("java/lang/Exception".to_string())],
-            },
+            StackMapFrame::Same { offset_delta: 2 },
         ]
     );
 }
 
-/// Два `new` на разных ветвях нельзя слить — честная ошибка, не `Top`.
+/// Two `new` on different branches cannot merge - an honest error, not `Top`.
 #[test]
 fn uninitialized_merge_is_rejected() {
     let method = code_method(
@@ -150,28 +151,37 @@ fn uninitialized_merge_is_rejected() {
         ],
         vec![],
     );
-    let err = compute_frames("demo/Pick", &method, &NoHierarchy).expect_err("слияние");
+    let err = compute_frames("demo/Pick", &method, &NoHierarchy).expect_err("merge");
     assert!(
-        err.to_string().contains("неинициализированных"),
-        "не тот текст: {err}"
+        err.to_string().contains("uninitialized"),
+        "wrong message: {err}"
     );
 }
 
-fn load(slot: u16) -> Insn {
+mod joins;
+
+pub(super) fn load(slot: u16) -> Insn {
     Insn::Load {
         slot,
         kind: SlotKind::Int,
     }
 }
 
-fn store(slot: u16) -> Insn {
+pub(super) fn load_ref(slot: u16) -> Insn {
+    Insn::Load {
+        slot,
+        kind: SlotKind::Ref,
+    }
+}
+
+pub(super) fn store(slot: u16) -> Insn {
     Insn::Store {
         slot,
         kind: SlotKind::Int,
     }
 }
 
-fn store_ref(slot: u16) -> Insn {
+pub(super) fn store_ref(slot: u16) -> Insn {
     Insn::Store {
         slot,
         kind: SlotKind::Ref,

@@ -77,8 +77,8 @@ pub(super) fn invert_branches(
 /// Each splice computes an always-false opaque predicate `(C*C + C) & 1 != 0`
 /// and branches on it: the fallthrough continues the stream, the dead block
 /// throws instead of rejoining. Throwing (rather than jumping back) keeps the
-/// splice valid at *any* stack depth — `athrow` has no successor, so there is
-/// nothing to merge — and the dead block still owns a frame through its entry
+/// splice valid at *any* stack depth - `athrow` has no successor, so there is
+/// nothing to merge - and the dead block still owns a frame through its entry
 /// branch, which HotSpot requires even for code that never executes.
 ///
 /// Cuts land at or after `start` (the entry prologue must stay first) and

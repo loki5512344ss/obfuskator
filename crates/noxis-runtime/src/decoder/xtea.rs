@@ -1,16 +1,16 @@
 //! Ветвь `xtea-ctr`: XTEA в режиме счётчика, побайтовый XOR на месте.
 //!
-//! Зеркало `scheme::xtea_ctr` побитово: ключ — четыре `u32` из key/nonce,
-//! счётчик — номер чанка, все правые сдвиги — логические (`u32` в Rust).
+//! Зеркало `scheme::xtea_ctr` побитово: ключ - четыре `u32` из key/nonce,
+//! счётчик - номер чанка, все правые сдвиги - логические (`u32` в Rust).
 
 use noxis_classfile::{Arith, ArrayKind, BranchCond, Cond, Convert, Insn, Prim, SlotKind};
 
 use super::kdf::{Gen, c_int, load, store};
 
-/// XTEA delta — знаковое представление для `ldc_w`.
+/// XTEA delta - знаковое представление для `ldc_w`.
 const DELTA: i32 = 0x9E37_79B9u32 as i32;
 
-/// Расшифровать `data` на месте; `len` — длина массива.
+/// Расшифровать `data` на месте; `len` - длина массива.
 pub(super) fn emit_xtea(asm: &mut Gen, key: u16, nonce: u16, data: u16, len: u16) {
     let slots = Slots::alloc(asm);
     emit_key_array(asm, key, nonce, &slots);
@@ -168,7 +168,7 @@ fn mixing(asm: &mut Gen, dst: u16, src: u16, key_shift: i32, slots: &Slots) {
     asm.emit(store(dst, SlotKind::Int));
 }
 
-/// XOR 8 байт чанка со стримом `(v0, v1)`; хвост короче 8 — частично.
+/// XOR 8 байт чанка со стримом `(v0, v1)`; хвост короче 8 - частично.
 fn emit_xor_bytes(asm: &mut Gen, data: u16, len: u16, slots: &Slots) {
     asm.emit(c_int(0));
     asm.emit(store(slots.index, SlotKind::Int));

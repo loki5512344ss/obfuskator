@@ -132,7 +132,7 @@ pub(crate) fn measure(insns: &[RtInsn]) -> Result<BTreeMap<u32, u16>, ClassfileE
     Ok(map)
 }
 
-/// Branch targets don't affect size — substitute the current position for sizing.
+/// Branch targets don't affect size - substitute the current position for sizing.
 fn smash_targets(insn: &mut RtInsn, position: u16) {
     match insn {
         RtInsn::Ifeq(target)

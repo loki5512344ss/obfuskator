@@ -24,7 +24,7 @@ pub const RED_PATTERNS: &[&str] = &[
 
 /// Все идентификаторы программы: классы, члены, строки кода.
 ///
-/// Члены — по простому имени (без владельца): сверка строгая и дешёвая,
+/// Члены - по простому имени (без владельца): сверка строгая и дешёвая,
 /// для точечной проверки есть `find_leaks` с keep-фильтром.
 pub fn collect_names(program: &Program) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
@@ -42,7 +42,7 @@ pub fn collect_names(program: &Program) -> BTreeSet<String> {
 
 /// Имена из эталона, пережившие обфускацию (минус keep).
 ///
-/// Пустой результат — норма; непустой — тест падает с этим списком.
+/// Пустой результат - норма; непустой - тест падает с этим списком.
 pub fn find_leaks(before: &BTreeSet<String>, after: &Program, keep: &KeepRules) -> Vec<String> {
     let names = collect_names(after);
     before

@@ -10,7 +10,7 @@ use noxis_core::{Config, Context, NameStyle, Rng};
 use super::{ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC};
 use crate::namegen::NameGenerator;
 
-/// `(owner, name, descriptor)` — matches a JVM reference.
+/// `(owner, name, descriptor)` - matches a JVM reference.
 pub(super) type MemberKey = (String, String, String);
 
 /// Rename maps for one run: `declared` is where a member was declared,

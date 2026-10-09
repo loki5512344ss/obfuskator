@@ -25,18 +25,18 @@ cd ref/evo/reverse
 |---|---|---|---|
 | `mod/jar/META-INF/evo/native/win-x64/evoguard.dll` | 51 321 | 18 | своя маленькая JNI-библиотека (MinGW, PE32+) |
 | `mod/evojdk_x/bin/java.dll` | 111 104 | 6 | стандартный `java.dll` из JDK **+ новая функция** |
-| `mod/evojdk_x/bin/server/jvm.dll` | 15 463 936 | — | **патченный HotSpot** + новый экспорт |
+| `mod/evojdk_x/bin/server/jvm.dll` | 15 463 936 | - | **патченный HotSpot** + новый экспорт |
 
 Отдельно (Java, не натив): `mod/evojdk_x/classes/java/lang/EvoShare.class`,
-исходник — `mod/evoshare/sources/java/lang/EvoShare.java` (JADX), вызывающий код —
+исходник - `mod/evoshare/sources/java/lang/EvoShare.java` (JADX), вызывающий код -
 `mod/agent-src/sources/evo/agent/key/NativeJvmShare.java`.
 
 ---
 
-## 1. evoguard.dll — JNI-«нативный шейр»
+## 1. evoguard.dll - JNI-«нативный шейр»
 
 Экспорт ровно один (плюс mingw-рантайм `_CRT_INIT`, `DllMainCRTStartup`, `atexit`,
-`sha256_block/update/final`, `env_flags_debug`, `hmac_sha256.constprop.0`) — **`JNI_OnLoad` нет**,
+`sha256_block/update/final`, `env_flags_debug`, `hmac_sha256.constprop.0`) - **`JNI_OnLoad` нет**,
 `nm`-имена не вычищены (COFF-символы остались).
 
 ### `Java_evo_systems_security_natives_NativeGuard_nativeShare(JNIEnv*, jclass, jstring hwid)` → `byte[32]`
@@ -67,7 +67,7 @@ return res;
 d42394b1dbe62f2d466fe6f8c4ee3cf5ce46949a032627a9ba00e8c5ef533bd2
 ```
 
-Итог: `NativeGuard.share(hwid) = HMAC-SHA256(key_eg, hwid_utf8)`, при детекте отладки —
+Итог: `NativeGuard.share(hwid) = HMAC-SHA256(key_eg, hwid_utf8)`, при детекте отладки -
 `XOR 0xA5` (не ошибка, а **молчаливо неверный шейр**).
 
 ### Платформенный паритет (`evoguard`)
@@ -83,9 +83,9 @@ d42394b1dbe62f2d466fe6f8c4ee3cf5ce46949a032627a9ba00e8c5ef533bd2
 ровно `d42394b1dbe62f2d466fe6f8c4ee3cf5ce46949a032627a9ba00e8c5ef533bd2`; следующие 32
 байта = тот же ключ с XOR `0x5c`. SHA-IV рядом (`0x180003090` = `67e6096a…`).
 Во всех сборках есть строки `IsDebuggerPresent`, `jdwp`, `agentlib`, `JAVA_TOOL_OPTIONS`,
-`_JAVA_OPTIONS` — логика антиотладки одинаковая. **Linux-сборки натива нет вообще**.
+`_JAVA_OPTIONS` - логика антиотладки одинаковая. **Linux-сборки натива нет вообще**.
 
-Потребитель: `alm.java` (KeyAssembler) — шейр идёт в 4-of-4 сборку Шамира:
+Потребитель: `alm.java` (KeyAssembler) - шейр идёт в 4-of-4 сборку Шамира:
 
 ```java
 byte[] nativeShare = NativeGuard.share(hwid);
@@ -97,7 +97,7 @@ ama.combine(new int[]{share.x(), share.xIntegrity(), share.xNative(), share.xHwi
 
 ---
 
-## 2. java.dll — `java.lang.EvoShare.computeRaw` (патченный JDK)
+## 2. java.dll - `java.lang.EvoShare.computeRaw` (патченный JDK)
 
 Экспорт: `Java_java_lang_EvoShare_computeRaw` (@ `0x180001ca4`, 286 байт) +
 импорт `JVM_EvoForeignAgentPresent` **из `jvm.dll`** (см. §3).
@@ -121,9 +121,9 @@ longlong Java_java_lang_EvoShare_computeRaw(JNIEnv* env, jclass cls, jbyteArray 
 
 `FUN_180001e4c(input, len, out32)`:
 
-1. `FUN_180001f1c(&DAT_180010e90, 0x20, input, len, out32)` — **стандартный HMAC-SHA256**
+1. `FUN_180001f1c(&DAT_180010e90, 0x20, input, len, out32)` - **стандартный HMAC-SHA256**
    (внутри явные SHA-IV `0x6a09e667…`, копирование ключа в ipad/opad);
-2. затем антиотладка, при срабатывании — `out32 ^= 0xA5…`:
+2. затем антиотладка, при срабатывании - `out32 ^= 0xA5…`:
    - `IsDebuggerPresent()`;
    - `CheckRemoteDebuggerPresent()`;
    - загружены модули `jdwp.dll`, `dt_socket.dll`, `dt_shmem.dll` (транспорты JDWP);
@@ -135,16 +135,16 @@ longlong Java_java_lang_EvoShare_computeRaw(JNIEnv* env, jclass cls, jbyteArray 
 70ea2f4857869bdc8606a29a6c8cdcedbe92c18bef1aad106024db104a8f25d1
 ```
 
-Ключи `evoguard.dll` и `java.dll` **разные** — это два независимых шейра.
+Ключи `evoguard.dll` и `java.dll` **разные** - это два независимых шейра.
 
-Константы-маски: `0xA5` — антиотладка (натив), `0x3C` — «чужой агент» из HotSpot,
-`0x5A` — Java-уровень (см. §4).
+Константы-маски: `0xA5` - антиотладка (натив), `0x3C` - «чужой агент» из HotSpot,
+`0x5A` - Java-уровень (см. §4).
 
 ---
 
-## 3. jvm.dll — экспорт `JVM_EvoForeignAgentPresent`
+## 3. jvm.dll - экспорт `JVM_EvoForeignAgentPresent`
 
-`mod/evojdk_x/bin/server/jvm.dll` (15,4 МБ) — тот же HotSpot, что и в `java.dll`, но с
+`mod/evojdk_x/bin/server/jvm.dll` (15,4 МБ) - тот же HotSpot, что и в `java.dll`, но с
 добавленным экспортом (в таблице экспортов: `[4281] +base[4282] 10b9 JVM_EvoForeignAgentPresent`).
 `java.dll` импортирует его и вызывает в `computeRaw`.
 
@@ -171,7 +171,7 @@ undefined1 JVM_EvoForeignAgentPresent(void) {
 
 ### Откуда берётся список и что такое `+0x53`
 
-- `DAT_180e2c160` — **глава глобального связного списка JVMTI-агентов** (stock-механизм HotSpot,
+- `DAT_180e2c160` - **глава глобального связного списка JVMTI-агентов** (stock-механизм HotSpot,
   `+0x20` = `next`, `+0x58` размер элемента). Доказательство: рядом лежит функция с литералом
   `"Disabled all JVMTI agents during -XX:AOTMode=create"`, которая делает `DAT_180e2c160 = 0`;
   push-функция `FUN_1805f40e0(name, path, is_absolute)` аллоцирует `0x58` байт, инициализирует
@@ -196,8 +196,8 @@ JVMTI-списке есть **хотя бы один не-instrument агент*
 
 Вызов из `EvoShare.computeRaw` → `XOR 0x3C` на HMAC-шейре (см. §2, §5).
 
-Также в `jvm_focus.c` — две функции, содержащие доступы к полю `0x53`
-(`FUN_180268640`, `FUN_1804a7920`), — это чтения в фильтрах классов/загрузчика, к
+Также в `jvm_focus.c` - две функции, содержащие доступы к полю `0x53`
+(`FUN_180268640`, `FUN_1804a7920`), - это чтения в фильтрах классов/загрузчика, к
 логике агентов отношения не имеют. Прямой записи `mov byte [reg+0x53]` в программе нет:
 поле инициализируется в конструкторе широкой записью через `strcmp`-результат.
 
@@ -210,12 +210,12 @@ public static byte[] compute(byte[] input) {
     byte[] out = computeRaw(input);              // натив, §2
     if (out != null && out.length == 32 && agentMismatch())
         for (int i = 0; i < out.length; i++)
-            out[i] = (byte) (out[i] ^ 90);       // 0x5A — третий уровень порчи
+            out[i] = (byte) (out[i] ^ 90);       // 0x5A - третий уровень порчи
     return out;
 }
 ```
 
-`agentMismatch()` — сканирует `VM.getRuntimeArguments()`:
+`agentMismatch()` - сканирует `VM.getRuntimeArguments()`:
 
 - аргумент `-agentpath:` или `-agentlib:` (любой нативный агент, в т.ч. `-agentlib:jdwp`) → `true`;
 - `-javaagent:<jar>[=opts]`: берёт путь jar, читает файл, считает SHA-256 и сравнивает с
@@ -230,11 +230,11 @@ AGENT_CORRUPT_MASK     = 90            // 0x5A
 EXPECTED_AGENT_SHA256  = 374ace507bd0cc2d0ce6dbbe07e50ddb3173ff819e92470271e2bf0fccff2038
 ```
 
-Проверено: `sha256sum mod/evo-agent.jar` = `374ace50…` — **пиннинг на свой агент
+Проверено: `sha256sum mod/evo-agent.jar` = `374ace50…` - **пиннинг на свой агент
 `evo-agent.jar`**. То есть JVM должен быть запущен либо вообще без `-javaagent`,
 либо именно с их агентом; чужой агент тихо ломает шейр.
 
-Потребитель — `evo.agent.key.NativeJvmShare` (в `evo-agent.jar`):
+Потребитель - `evo.agent.key.NativeJvmShare` (в `evo-agent.jar`):
 
 ```java
 Method compute = Class.forName("java.lang.EvoShare").getMethod("compute", byte[].class);
@@ -242,7 +242,7 @@ byte[] share = (byte[]) compute.invoke(null, hwid.getBytes(UTF_8));
 // ClassNotFoundException → KeyProviderException("not running on the EvoVis custom JVM")
 ```
 
-То есть **payload-ключ требует их кастомного JDK** — на стоковом `java` шейр получить нельзя.
+То есть **payload-ключ требует их кастомного JDK** - на стоковом `java` шейр получить нельзя.
 
 ---
 
@@ -255,19 +255,19 @@ byte[] share = (byte[]) compute.invoke(null, hwid.getBytes(UTF_8));
 | натив JDK | `EvoShare.computeRaw` | `JVM_EvoForeignAgentPresent() == 1`: есть `-agentlib:`/`-agentpath:` агент либо ≥2 `-javaagent:` | `XOR 0x3C` |
 | Java JDK | `EvoShare.compute` | `-agentpath:`/`-agentlib:` или `-javaagent:` с чужим sha256 | `XOR 0x5A` |
 
-Во всех случаях результат остаётся валидным `byte[32]` — ошибка не сигнализируется,
+Во всех случаях результат остаётся валидным `byte[32]` - ошибка не сигнализируется,
 ключ просто собирается неверно (в `alm.java` дальше идёт `combine` Шамира и `alz.wipe`).
 
 Две разные схемы HMAC (разные ключи) дают два разных шейра:
 
-- `NativeGuard.share(hwid)` — в сборку ключа мода (`alm.java`, 4-of-4 Шамир);
-- `EvoShare.compute(hwid)` — в цепочку ключа payload'а агента (`NativeJvmShare`, `EvoAgent`).
+- `NativeGuard.share(hwid)` - в сборку ключа мода (`alm.java`, 4-of-4 Шамир);
+- `EvoShare.compute(hwid)` - в цепочку ключа payload'а агента (`NativeJvmShare`, `EvoAgent`).
 
 ---
 
 ## 6. `evovis-audiotap` (macOS, Swift)
 
-`mod/jar/assets/evolution/native/macos/evovis-audiotap` — **Mach-O universal (x86_64 + arm64),
+`mod/jar/assets/evolution/native/macos/evovis-audiotap` - **Mach-O universal (x86_64 + arm64),
 174 848 байт, исполняемый файл** (`_main` + `__mh_execute_header`, не dylib).
 
 Факты по `strings` / `r2`:
@@ -275,17 +275,17 @@ byte[] share = (byte[]) compute.invoke(null, hwid.getBytes(UTF_8));
 - написан на **Swift** (секции `__swift5_typeref/capture/entry/reflstr/fieldmd/types`),
   класс `main.AudioTap` (`_TtC4main8AudioTap`);
 - зависимости: **ScreenCaptureKit**, CoreMedia, AVFoundation, CoreAudio (swiftCoreAudio),
-  Foundation, IOKit — то есть захват системного звука/видеопотока через ScreenCaptureKit;
+  Foundation, IOKit - то есть захват системного звука/видеопотока через ScreenCaptureKit;
 - делегат `stream(_:didOutputSampleBuffer:of:)` (`SCStream` + `CMSampleBuffer`) и
   `stream(_:didStopWithError:)`; поля `output: NSFileHandle`, `mono: [Float]`;
 - логи/метки `evovis.audiotap.audio`, `evovis.audiotap.screen`;
-- **сетевых строк нет** (ни `http`, ни сокетов, ни доменов) — данные пишутся в
+- **сетевых строк нет** (ни `http`, ни сокетов, ни доменов) - данные пишутся в
   `NSFileHandle` (pipe/stdout), то есть процесс-потребитель мод запускает локально.
 
 Вывод: это локальный helper для тапа аудио (и экрана) на macOS, результат уходит пайпом
 в родительский процесс; в аудио/сеть наружу ничего не отдаётся.
 
-Декомпиляция Ghidra для него не запускалась (предмет — Swift + macOS-фреймворки, на
+Декомпиляция Ghidra для него не запускалась (предмет - Swift + macOS-фреймворки, на
 уровне строк/символов картина уже ясна); запускается по необходимости:
 
 ```bash

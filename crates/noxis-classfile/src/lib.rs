@@ -27,3 +27,11 @@ pub use model::{
     LocalVariable, LocalVariableType, Method, MethodParameter, Program, RecordComponent, Resource,
     Version,
 };
+
+/// Safety budget: a method body that would grow past this many instructions
+/// is left alone by the expanding passes (`strings`, `constants`).
+///
+/// The writer caps a method body at 64KB; at a pessimistic 8 bytes per
+/// instruction this count can never overflow it, while real methods
+/// (hundreds of instructions) never come close.
+pub const MAX_METHOD_INSNS: usize = 8_000;

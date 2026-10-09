@@ -1,10 +1,10 @@
 //! Project structure rules, invoked from every crate's `build.rs`.
 //!
 //! Rules apply to Rust code only, not to documentation:
-//! * every `.rs` file holds at most [`MAX_FILE_LINES`] *code* lines — blank
+//! * every `.rs` file holds at most [`MAX_FILE_LINES`] *code* lines - blank
 //!   lines and full-line comments (`//`, `///`, `//!`) are not counted;
 //! * every directory inside a crate's `src/`, `tests/` or `benches/` holds
-//!   at most [`MAX_DIR_FILES`] files — subdirectories are unlimited.
+//!   at most [`MAX_DIR_FILES`] files - subdirectories are unlimited.
 //!
 //! Deliberately excluded: `Cargo.lock`, `.gitignore`, `docs/`, the legacy
 //! `info/` tree, and crate roots (they always own `Cargo.toml` plus
@@ -34,13 +34,13 @@ const SKIPPED_DIRS: [&str; 2] = ["target", ".git"];
 ///
 /// # Panics
 ///
-/// Panics whenever a rule is violated — that is the point of the gate.
+/// Panics whenever a rule is violated - that is the point of the gate.
 pub fn check() {
     let manifest = manifest_dir();
     let mut violations = Vec::new();
 
     // `src/` is required; `tests/` and `benches/` are checked only when they
-    // exist — otherwise the line rule is bypassed by moving code into tests.
+    // exist - otherwise the line rule is bypassed by moving code into tests.
     // `docs/` stays out of the gate: the rules are about Rust code only.
     let roots = [
         manifest.join("src"),

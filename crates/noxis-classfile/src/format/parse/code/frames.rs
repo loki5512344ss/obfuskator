@@ -11,7 +11,7 @@ use super::super::pool::class_name;
 use crate::error::ClassfileError;
 use crate::format::{StackMapFrame, VerificationType};
 
-/// Backend frames → ours (index deltas — as-is).
+/// Backend frames → ours (index deltas - as-is).
 pub(super) fn to_frames(
     frames: &[StackFrame],
     pool: &ConstantPool<'_>,
@@ -100,7 +100,7 @@ fn vtype(value: &RtType, pool: &ConstantPool<'_>) -> Result<VerificationType, Cl
     })
 }
 
-/// The catch type (`0` — catch-all for `finally`/`any`).
+/// The catch type (`0` - catch-all for `finally`/`any`).
 pub(super) fn catch_type(
     pool: &ConstantPool<'_>,
     index: u16,

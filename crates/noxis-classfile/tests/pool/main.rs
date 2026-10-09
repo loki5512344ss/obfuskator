@@ -4,7 +4,7 @@
 //! сопоставляет запись `LocalVariableTypeTable` с `LocalVariableTable` по
 //! сырому `name_index`. Дублирующий `Utf8` для одного имени даёт разные индексы
 //! и рушит класс: `ClassFormatError: LVTT entry ... does not match any LVT
-//! entry`. Писатель обязан интернировать строки — поэтому в записанном пуле
+//! entry`. Писатель обязан интернировать строки - поэтому в записанном пуле
 //! каждый `CONSTANT_Utf8` уникален.
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]

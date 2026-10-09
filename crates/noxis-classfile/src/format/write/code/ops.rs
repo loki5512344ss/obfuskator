@@ -229,7 +229,7 @@ fn arg_count(descriptor: &str) -> Result<u8, ClassfileError> {
         .map_err(|_| ClassfileError::Write(format!("слишком много аргументов в {descriptor}")))
 }
 
-/// Skip characters up to the separator (inclusive); `false` — the string ended.
+/// Skip characters up to the separator (inclusive); `false` - the string ended.
 fn skip_to(chars: &mut std::str::Chars<'_>, end: char) -> bool {
     for char in chars {
         if char == end {

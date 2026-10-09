@@ -1,7 +1,7 @@
 //! Our [`Insn`](crate::insn::Insn) → the backend's `Instruction`.
 //!
 //! The reverse side of `super::super::parse::insns`: labels resolve into
-//! absolute instruction numbers (`switch` — into deltas from itself), constants
+//! absolute instruction numbers (`switch` - into deltas from itself), constants
 //! and references go to the pool via [`Pool`](super::super::pool::Pool).
 
 use indexmap::IndexMap;
@@ -13,9 +13,9 @@ use super::{branch, delta, fit_index, ret_op};
 use crate::error::ClassfileError;
 use crate::insn::{Insn, Label, SlotKind};
 
-/// One IR instruction → a backend instruction (`None` — a label marker).
+/// One IR instruction → a backend instruction (`None` - a label marker).
 ///
-/// `index` — the instruction's number in the method (needed for `switch` deltas).
+/// `index` - the instruction's number in the method (needed for `switch` deltas).
 pub(crate) fn convert(
     insn: &Insn,
     index: u32,

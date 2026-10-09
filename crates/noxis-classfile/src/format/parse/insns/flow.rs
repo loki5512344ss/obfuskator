@@ -6,7 +6,7 @@ use super::Resolver;
 use crate::error::ClassfileError;
 use crate::insn::{BranchCond, Cond, Insn, Label, Prim};
 
-/// `Some` — the instruction is covered; `None` — hand it to the next converters.
+/// `Some` - the instruction is covered; `None` - hand it to the next converters.
 pub(super) fn convert_flow(
     instruction: &Instruction,
     index: u16,
@@ -52,7 +52,7 @@ fn branch(cond: BranchCond, target: u16, resolve: &Resolver<'_>) -> Result<Insn,
     Ok(Insn::Branch(cond, resolve(target)?))
 }
 
-/// A `switch` target — an instruction number: base plus the backend's relative delta.
+/// A `switch` target - an instruction number: base plus the backend's relative delta.
 fn abs(index: u16, delta: i32, resolve: &Resolver<'_>) -> Result<Label, ClassfileError> {
     let absolute = i32::from(index)
         .checked_add(delta)

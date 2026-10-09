@@ -71,19 +71,19 @@ Fabric загружает мод → мод сам распаковывает ev
 
 Ключевые свойства:
 
-1. **Мод не лежит на диске в открытом виде** — расшифровка в памяти агента,
-   `candidate` — временный mount-файл.
+1. **Мод не лежит на диске в открытом виде** - расшифровка в памяти агента,
+   `candidate` - временный mount-файл.
 2. **Ключ собирается из двух мест**: hex из env (лаунчер) + `java.lang.EvoShare.compute(hwid)`
-   в **подменённом JVM** — поэтому мод гоняется только на их evojdk.
-3. **Инъекция в Fabric** — не мод в `mods/`, а байткод-трансформация внутреннего
+   в **подменённом JVM** - поэтому мод гоняется только на их evojdk.
+3. **Инъекция в Fabric** - не мод в `mods/`, а байткод-трансформация внутреннего
    класса Fabric (`ArgumentModCandidateFinder`) через `java.lang.classfile` API.
    Классы: `EvoAgent`, `EvoAgentHook`, `FabricDiscoveryInjector`, `PreparedMod`,
    `NestedLibraries`.
-4. Далее внутри мода — свой слой: `KeyAssembler` (Shamir: сервер + integrity + native + hwid),
+4. Далее внутри мода - свой слой: `KeyAssembler` (Shamir: сервер + integrity + native + hwid),
    `SealedBoot` (sealed.bin в этом билде отсутствует → fail-open), `SessionHeartbeat`.
 
 ## Что здесь не проверено
 
-- Тело `java.dll` / `EvoShare` — натив не реверсился (план в `todo.md`).
+- Тело `java.dll` / `EvoShare` - натив не реверсился (план в `todo.md`).
 - Реальное поведение при запуске (нужен MC 26.2 + Fabric 0.19.5 + их evojdk + дисплей).
-- `evoguard.dll` — не реверсился.
+- `evoguard.dll` - не реверсился.

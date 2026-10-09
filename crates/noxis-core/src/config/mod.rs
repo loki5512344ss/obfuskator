@@ -61,7 +61,7 @@ pub enum Profile {
     Standard,
     /// Всё включено, включая агрессивный control-flow.
     Paranoid,
-    /// Ничего не включено явно — только `enable` из конфига.
+    /// Ничего не включено явно - только `enable` из конфига.
     Manual,
 }
 
@@ -97,7 +97,7 @@ impl Profile {
 #[serde(default, deny_unknown_fields)]
 pub struct Config {
     pub profile: Profile,
-    /// Мастер-сид; `None` — случайный, но обязательно попадает в отчёт.
+    /// Мастер-сид; `None` - случайный, но обязательно попадает в отчёт.
     pub seed: Option<u64>,
     /// Принудительно включить пассы вне профиля.
     pub enable: Vec<PassId>,

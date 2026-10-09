@@ -6,7 +6,7 @@ use regex::Regex;
 use crate::entrypoints::Entrypoints;
 use noxis_core::Config;
 
-/// Скомпилированный glob: `*` — любые символы кроме `/`, `**` — всё, `?` — один.
+/// Скомпилированный glob: `*` - любые символы кроме `/`, `**` - всё, `?` - один.
 fn compile(pattern: &str) -> Result<Regex, regex::Error> {
     let mut out = String::from("^");
     let chars: Vec<char> = pattern.chars().collect();
@@ -107,7 +107,7 @@ impl KeepRules {
     /// Методы, на которые ссылаются `BootstrapMethods` (`invokedynamic`).
     ///
     /// Переименование такого метода без правки bootstrap-записи ломает класс,
-    /// а правка — задача P2 (см. `todo.md`): пока просто не трогаем имена.
+    /// а правка - задача P2 (см. `todo.md`): пока просто не трогаем имена.
     pub fn absorb_bootstrap(&mut self, program: &Program) {
         for class in &program.classes {
             for method in &class.methods {

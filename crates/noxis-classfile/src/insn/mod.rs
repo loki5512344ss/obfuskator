@@ -1,7 +1,7 @@
 //! IR instructions: no offsets, branches address a [`Label`].
 //!
 //! This is fundamental: any pass that changes instruction order/length need not
-//! recompute jump offsets — the writer does that once at the end of the pipeline.
+//! recompute jump offsets - the writer does that once at the end of the pipeline.
 
 mod kinds;
 
@@ -27,7 +27,7 @@ pub enum Insn {
         slot: u16,
         kind: SlotKind,
     },
-    /// `iinc` — increase a local variable by a constant.
+    /// `iinc` - increase a local variable by a constant.
     Iinc {
         index: u16,
         delta: i32,
@@ -45,7 +45,7 @@ pub enum Insn {
     Dup2X1,
     Dup2X2,
     Swap,
-    /// `iadd`, `lmul`, `lneg`, ... — type + operation.
+    /// `iadd`, `lmul`, `lneg`, ... - type + operation.
     Binary {
         prim: Prim,
         op: Arith,
@@ -59,9 +59,9 @@ pub enum Insn {
     Convert(Convert),
     Branch(BranchCond, Label),
     Goto(Label),
-    /// `jsr` — subroutine call (only version ≤ 50 classes).
+    /// `jsr` - subroutine call (only version ≤ 50 classes).
     Jsr(Label),
-    /// `ret` — return from a subroutine (`jsr`/`ret` come in pairs).
+    /// `ret` - return from a subroutine (`jsr`/`ret` come in pairs).
     Ret(u16),
     TableSwitch {
         default: Label,
@@ -73,9 +73,9 @@ pub enum Insn {
         default: Label,
         pairs: Vec<(i32, Label)>,
     },
-    /// `return`/`ireturn`/...; `None` — void return.
+    /// `return`/`ireturn`/...; `None` - void return.
     Return(Option<Prim>),
-    /// `areturn` — return a reference ([`Prim`] has no reference type).
+    /// `areturn` - return a reference ([`Prim`] has no reference type).
     AReturn,
     GetStatic {
         owner: String,
@@ -112,7 +112,7 @@ pub enum Insn {
     New(String),
     NewArray(ArrayKind),
     ANewArray(String),
-    /// `multianewarray` — array of any dimension; `dims` — how many dimensions from the stack.
+    /// `multianewarray` - array of any dimension; `dims` - how many dimensions from the stack.
     MultiANewArray {
         descriptor: String,
         dims: u8,

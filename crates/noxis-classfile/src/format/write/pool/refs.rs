@@ -2,7 +2,7 @@
 //!
 //! This is an `impl Pool` from [`super`], split out so the parent file stays
 //! within the structure limit. Each builder is memoized by a semantic key
-//! (owner/name/descriptor/…) — an identical reference always gets the same index,
+//! (owner/name/descriptor/…) - an identical reference always gets the same index,
 //! and the pool doesn't bloat with duplicates (bloat would otherwise widen `ldc`
 //! into `ldc_w` and change code length on relocation).
 

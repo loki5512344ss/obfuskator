@@ -7,7 +7,7 @@ use super::super::pool::const_from;
 use crate::error::ClassfileError;
 use crate::insn::{Arith, ArrayKind, Const, Convert, Insn, Prim, SlotKind};
 
-/// `Some` — the instruction is covered; `None` — hand it to the next converters.
+/// `Some` - the instruction is covered; `None` - hand it to the next converters.
 pub(super) fn convert_basic(
     instruction: &Instruction,
     pool: &ConstantPool<'_>,

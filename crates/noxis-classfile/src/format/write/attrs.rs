@@ -1,6 +1,6 @@
 //! Our IR attributes → backend attributes.
 //!
-//! Attribute names (`SourceFile`, …) are interned into the pool right here — the
+//! Attribute names (`SourceFile`, …) are interned into the pool right here - the
 //! backend stores only `name_index`, and the string is recovered on read.
 
 use ristretto_classfile::attributes::{

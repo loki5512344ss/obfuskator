@@ -11,7 +11,7 @@ use noxis_core::Config;
 pub struct Args {
     /// Входной jar.
     pub input: PathBuf,
-    /// TOML-конфиг с keep-паттернами (без него — пустой keep).
+    /// TOML-конфиг с keep-паттернами (без него - пустой keep).
     #[arg(short, long)]
     pub config: Option<PathBuf>,
 }

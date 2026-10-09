@@ -6,8 +6,8 @@
 //! static String d(String cipher, int salt)
 //! ```
 //!
-//! - `cipher` — base64 шифротекста (схема выбирается по salt: `scheme = all[salt % n]`);
-//! - `salt` — индекс строки, по нему детерминированно выводятся key и nonce;
+//! - `cipher` - base64 шифротекста (схема выбирается по salt: `scheme = all[salt % n]`);
+//! - `salt` - индекс строки, по нему детерминированно выводятся key и nonce;
 //! - мастер-секрет **не передаётся на вызове** и не лежит в одной константе:
 //!   он собирается из двух частей (`k1 ^ k2`) прямо в декодере.
 //!
@@ -63,7 +63,7 @@ pub fn decoder_class(
     emit_dispatch(&mut asm, &parsed, key, nonce, data, len);
     emit_epilogue(&mut asm, data);
     let code = Code {
-        // Точный пик — 10 слотов (замер 08.10.2026); запас без вреда:
+        // Точный пик - 10 слотов (замер 08.10.2026); запас без вреда:
         // лимит обязан лишь покрывать фактическую глубину.
         max_stack: 12,
         max_locals: asm.slots,
@@ -88,7 +88,7 @@ pub fn decoder_owner(seed_name: &str) -> String {
 }
 
 /// Пролог: `master = k1 ^ k2`; возвращает слот пары. Ни одна часть не равна
-/// мастер-секрету (вторая — `master ^ k1`, первая — потоковая).
+/// мастер-секрету (вторая - `master ^ k1`, первая - потоковая).
 fn emit_master(asm: &mut Gen, master: u64) -> u16 {
     use noxis_core::Rng;
 
@@ -135,7 +135,7 @@ fn emit_len(asm: &mut Gen, data: u16) -> u16 {
     slot
 }
 
-/// Диспетчер схем: `salt % n` лестницей `if_icmpne` (n == 1 — без диспетчера).
+/// Диспетчер схем: `salt % n` лестницей `if_icmpne` (n == 1 - без диспетчера).
 fn emit_dispatch(asm: &mut Gen, schemes: &[Scheme], key: u16, nonce: u16, data: u16, len: u16) {
     if schemes.len() == 1 {
         dispatch_branch(asm, schemes[0], key, nonce, data, len);

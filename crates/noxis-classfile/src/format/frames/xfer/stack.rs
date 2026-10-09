@@ -5,7 +5,7 @@ use super::State;
 use crate::error::ClassfileError;
 use crate::insn::SlotKind;
 
-/// Запись в local с учётом ширины (`long`/`double` — парой с `Top`).
+/// Запись в local с учётом ширины (`long`/`double` - парой с `Top`).
 pub(super) fn store_local(
     state: &mut State,
     slot: u16,
@@ -38,7 +38,7 @@ pub(super) fn push(state: &mut State, slots: Vec<VerificationType>) -> Result<()
     Ok(())
 }
 
-/// Снять `n` слотов (снизу вверх); нехватка — честная ошибка.
+/// Снять `n` слотов (снизу вверх); нехватка - честная ошибка.
 pub(super) fn pop_slots(
     state: &mut State,
     n: usize,
@@ -84,7 +84,7 @@ pub(super) fn local_set(
     Ok(())
 }
 
-/// Значение local'а целиком: `long`/`double` — парой с `Top`.
+/// Значение local'а целиком: `long`/`double` - парой с `Top`.
 pub(super) fn wide_push(value: VerificationType) -> Vec<VerificationType> {
     match value {
         VerificationType::Long | VerificationType::Double => vec![value, VerificationType::Top],
@@ -112,7 +112,7 @@ pub(super) fn dup(
     push(state, out)
 }
 
-/// `dup2*`: форма выбирается по вершине (`Top` — вторая половина `long`).
+/// `dup2*`: форма выбирается по вершине (`Top` - вторая половина `long`).
 pub(super) fn dup2(
     state: &mut State,
     class: &str,

@@ -8,7 +8,7 @@
 //!
 //! Every scheme also cuts the stream with a few `goto` splices (intra-method
 //! mixing) and recomputes `StackMapTable` afterwards, so the only thing a
-//! scheme may assume is an empty stack at method entry — joins stay consistent
+//! scheme may assume is an empty stack at method entry - joins stay consistent
 //! by construction (see `dispatch`/`rewire` for why each shape is safe).
 
 mod dispatch;
@@ -120,7 +120,7 @@ fn skippable(name: &str, code: &Code, max_insns: usize) -> bool {
     if name == "<init>" {
         return true;
     }
-    // Frames are never computed for subroutines — keep them byte-identical.
+    // Frames are never computed for subroutines - keep them byte-identical.
     if code
         .insns
         .iter()
@@ -167,7 +167,7 @@ fn apply_scheme(code: &mut Code, scheme: Scheme, cfg: &noxis_core::FlowConfig, r
             prologue.push(Insn::Mark(body));
         }
         Scheme::ComputedSwitch if code.max_locals == u16::MAX => {
-            // No free local slot — fall back to the stack-based dispatcher.
+            // No free local slot - fall back to the stack-based dispatcher.
             prologue.extend(table_dispatch(body, dead, rng));
             prologue.push(Insn::Mark(body));
         }
@@ -189,7 +189,7 @@ fn apply_scheme(code: &mut Code, scheme: Scheme, cfg: &noxis_core::FlowConfig, r
             // No skip-goto after the dead block: the dispatcher's dead
             // `Goto(body)` already jumps over the handler. A second goto
             // would sit after a terminal with no frame of its own, and
-            // HotSpot requires a frame at every block start — even an
+            // HotSpot requires a frame at every block start - even an
             // unreachable one. try_e IS the dead mark for the same reason.
             let (mut handler_code, entry) = dead_catch(try_start, dead, handler, body);
             guarded.append(&mut handler_code);

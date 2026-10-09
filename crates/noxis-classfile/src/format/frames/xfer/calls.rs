@@ -1,4 +1,4 @@
-//! Вызовы и константы: дескрипторы, `<init>`, слоты значений.
+//! Calls and constants: descriptors, `<init>`, value slots.
 
 use super::super::VerificationType;
 use super::super::merge::descs::{DescError, field_slots, method_slots};
@@ -34,18 +34,12 @@ pub(super) fn invoke(
     descriptor: &str,
 ) -> Result<(), ClassfileError> {
     let (params, ret) = method_slots(descriptor).map_err(|e| context(class, method, e))?;
-    super::stack::pop_slots(
-        state,
-        count_slots(&params),
-        class,
-        method,
-        "аргументы вызова",
-    )?;
+    super::stack::pop_slots(state, count_slots(&params), class, method, "call arguments")?;
     let mut receiver = None;
     if kind != InvokeKind::Static {
         receiver = super::stack::pop_slots(state, 1, class, method, "objectref")?.pop();
     }
-    // `<init>` инициализирует получателя во ВСЕХ его копиях.
+    // `<init>` initializes the receiver in ALL its copies.
     if name == "<init>" {
         match receiver {
             Some(VerificationType::UninitializedThis) => {
@@ -55,9 +49,11 @@ pub(super) fn invoke(
                     &initialized(class),
                 );
             }
-            Some(VerificationType::Uninitialized(_)) => {
+            // Only the receiver's own allocation site: an enclosing `new`
+            // whose `<init>` has not run yet must stay uninitialized.
+            Some(VerificationType::Uninitialized(offset)) => {
                 let fresh = VerificationType::Object(owner.to_string());
-                replace_uninit(state, &fresh);
+                replace(state, &VerificationType::Uninitialized(offset), &fresh);
             }
             _ => {}
         }
@@ -68,24 +64,15 @@ pub(super) fn invoke(
     Ok(())
 }
 
-/// Число слотов всех параметров.
+/// Slot count across all parameters.
 pub(super) fn count_slots(params: &[Vec<VerificationType>]) -> usize {
     params.iter().map(Vec::len).sum()
 }
 
-/// Заменить все вхождения типа новым (инициализация через `<init>`).
+/// Replace every occurrence of a type with a new one (init via `<init>`).
 fn replace(state: &mut State, from: &VerificationType, to: &VerificationType) {
     for slot in state.locals.iter_mut().chain(state.stack.iter_mut()) {
         if slot == from {
-            *slot = to.clone();
-        }
-    }
-}
-
-/// Любой `Uninitialized` (кроме `this`) → тип владельца (созданный `new`).
-fn replace_uninit(state: &mut State, to: &VerificationType) {
-    for slot in state.locals.iter_mut().chain(state.stack.iter_mut()) {
-        if matches!(slot, VerificationType::Uninitialized(_)) {
             *slot = to.clone();
         }
     }
@@ -115,7 +102,7 @@ pub(super) fn prim_push(prim: Prim) -> Vec<VerificationType> {
     }
 }
 
-/// `(слоты аргумента, примитив результата)` для конверсии.
+/// `(argument slots, result primitive)` for a conversion.
 pub(super) fn convert_shapes(op: Convert) -> (usize, Prim) {
     use Convert::{D2F, D2I, D2L, F2D, F2I, F2L, I2B, I2C, I2D, I2F, I2L, I2S, L2D, L2F, L2I};
     use Prim::{Double, Float, Int, Long};

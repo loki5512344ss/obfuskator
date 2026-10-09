@@ -4,7 +4,7 @@
 //! Вход собирается `ByteBuffer`, чтобы не материализовывать 26 байт
 //! поштучно: `allocate.putLong(master).put(domain).putLong(salt).array()`.
 //!
-//! Здесь же — строитель тела метода и короткие эмиссии (общие для всех
+//! Здесь же - строитель тела метода и короткие эмиссии (общие для всех
 //! ветвей декодера).
 
 use noxis_classfile::{Arith, BranchCond, Cond, Const, Insn, InvokeKind, Label, Prim, SlotKind};
@@ -21,7 +21,7 @@ impl Gen {
         Self {
             insns: Vec::new(),
             labels: 0,
-            // Слоты 0 (`cipher`) и 1 (`salt`) — параметры метода.
+            // Слоты 0 (`cipher`) и 1 (`salt`) - параметры метода.
             slots: 2,
         }
     }
@@ -32,7 +32,7 @@ impl Gen {
         label
     }
 
-    /// Занять слоты (`wide` — пара под `long`).
+    /// Занять слоты (`wide` - пара под `long`).
     pub(super) fn alloc(&mut self, wide: bool) -> u16 {
         let slot = self.slots;
         self.slots += if wide { 2 } else { 1 };
@@ -134,7 +134,7 @@ pub(super) fn emit_kdf(asm: &mut Gen, master: u16, domain: &str) -> u16 {
 
 /// Собрать вход `master || domain || salt` в слот `input`.
 ///
-/// Rust считает FNV по little-endian байтам, а `putLong` кладёт big-endian —
+/// Rust считает FNV по little-endian байтам, а `putLong` кладёт big-endian -
 /// поэтому оба `long` разворачиваются (`Long.reverseBytes`).
 fn build_input(asm: &mut Gen, master: u16, domain: &str, input: u16) {
     asm.emit(c_int(16 + domain.len() as i32));

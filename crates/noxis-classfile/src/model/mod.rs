@@ -1,4 +1,4 @@
-//! The "program" structure — the unit of work for the pipeline.
+//! The "program" structure - the unit of work for the pipeline.
 
 pub mod builder;
 pub mod version;
@@ -8,7 +8,7 @@ pub use version::Version;
 use crate::format::StackMapFrame;
 use crate::insn::{Const, Insn, Label};
 
-/// Unknown/specific attributes are stored as bytes — lossless round-trip.
+/// Unknown/specific attributes are stored as bytes - lossless round-trip.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Attribute {
     SourceFile(String),
@@ -32,7 +32,7 @@ pub enum Attribute {
         class: String,
         method: Option<(String, String)>,
     },
-    /// `MethodParameters`: formal parameter names (`None` — unnamed).
+    /// `MethodParameters`: formal parameter names (`None` - unnamed).
     MethodParameters(Vec<MethodParameter>),
     /// `Record`: the record class's components.
     Record(Vec<RecordComponent>),
@@ -47,7 +47,7 @@ pub enum Attribute {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LineNumber {
-    /// Start label (the writer computes bytes — survives pass insertions).
+    /// Start label (the writer computes bytes - survives pass insertions).
     pub start: Label,
     pub line: u16,
 }
@@ -159,7 +159,7 @@ impl Code {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExceptionHandler {
-    /// `None` — catch-all (`finally`).
+    /// `None` - catch-all (`finally`).
     pub start: Label,
     pub end: Label,
     pub handler: Label,

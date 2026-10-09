@@ -1,7 +1,7 @@
 //! Шифрование строк: чанки, salt под схему, последовательность вызова.
 //!
 //! Один `Const::String` превращается в `ldc cipher; ldc salt; invokestatic
-//! d` на чанк; чанки склеиваются `String.concat` (без `StringBuilder` —
+//! d` на чанк; чанки склеиваются `String.concat` (без `StringBuilder` -
 //! меньше инструкций и нет вызовов конструктора).
 
 use noxis_classfile::{Const, Insn, InvokeKind};
@@ -24,7 +24,7 @@ pub(super) fn split_chunks(text: &str, split_above: usize) -> Vec<String> {
 
 /// Salt, попадающий в нужную схему: `salt % total == index`.
 ///
-/// Salt всегда неотрицательный (Java `%` сохраняет знак — отрицательный salt
+/// Salt всегда неотрицательный (Java `%` сохраняет знак - отрицательный salt
 /// выбрал бы не ту ветку декодера). `index` обязан быть меньше `total`.
 pub(super) fn salt_for_scheme(raw: u64, index: usize, total: usize) -> i32 {
     let total = total.max(1) as u64;

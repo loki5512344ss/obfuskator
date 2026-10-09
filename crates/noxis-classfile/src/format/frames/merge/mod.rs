@@ -1,12 +1,12 @@
 //! Type merging (LUB) and descriptor parsing.
 //!
-//! The lattice: `Top` is "empty" (the neighbour wins), `Null` is absorbed into a
-//! reference, equal types map to themselves, references take the least upper
-//! bound over the hierarchy. Incompatible initialized types (`int` vs a reference
-//! after `astore` in a handler) yield `Top`, like `javac`'s truncated frames: a
-//! `Top` in a frame accepts any actual value, so this is always sound. The
-//! exception is uninitialized types: merging them means a broken construction
-//! flow — here an honest error, not a silent `Top`.
+//! The lattice: `Top` absorbs (a slot unwritten on any inflow stays `Top`,
+//! like `javac` - a precise type would reject the inflow that never wrote
+//! it). `Null` is absorbed into a reference, equal types map to themselves,
+//! references take the least upper bound over the hierarchy. Incompatible
+//! initialized types (`int` vs a reference) yield `Top`. The exception is
+//! uninitialized types: merging them means a broken construction flow -
+//! here an honest error, not a silent `Top`.
 
 pub(super) mod descs;
 
@@ -19,7 +19,7 @@ use descs::write_local;
 
 /// The class hierarchy for LUB: the superclass chain is enough.
 pub trait Hierarchy {
-    /// The direct superclass (`None` — `java/lang/Object` or unknown).
+    /// The direct superclass (`None` - `java/lang/Object` or unknown).
     fn superclass(&self, class: &str) -> Option<String>;
 }
 
@@ -38,7 +38,7 @@ impl Merger<'_> {
         }
     }
 
-    /// Merge an incoming state; `true` — the slot changed.
+    /// Merge an incoming state; `true` - the slot changed.
     pub fn merge_into(
         &self,
         slot: &mut Option<State>,
@@ -75,11 +75,11 @@ impl Merger<'_> {
                 VerificationType::Object(self.class.clone())
             };
             slot = write_local(&mut locals, slot, vec![this])
-                .map_err(|_| self.invalid("параметры не влезают в locals"))?;
+                .map_err(|_| self.invalid("parameters do not fit into locals"))?;
         }
         for param in params {
             slot = write_local(&mut locals, slot, param)
-                .map_err(|_| self.invalid("параметры не влезают в locals"))?;
+                .map_err(|_| self.invalid("parameters do not fit into locals"))?;
         }
         Ok(State {
             locals,
@@ -89,10 +89,10 @@ impl Merger<'_> {
 
     fn lub_states(&self, first: &State, second: &State) -> Result<State, ClassfileError> {
         if first.locals.len() != second.locals.len() {
-            return Err(self.invalid("разная длина locals при слиянии"));
+            return Err(self.invalid("locals length differs across the merge"));
         }
         if first.stack.len() != second.stack.len() {
-            return Err(self.invalid("разная глубина стека при слиянии"));
+            return Err(self.invalid("stack depth differs across the merge"));
         }
         Ok(State {
             locals: first
@@ -120,7 +120,10 @@ impl Merger<'_> {
             return Ok(first.clone());
         }
         match (first, second) {
-            (Top, other) | (other, Top) => Ok(other.clone()),
+            // A slot unwritten on any inflow stays `Top` (like `javac`): the
+            // frame keeps accepting every inflow, while a precise type would
+            // reject the one that never wrote the slot.
+            (Top, _) | (_, Top) => Ok(Top),
             (Null, other @ Object(_)) | (other @ Object(_), Null) => Ok(other.clone()),
             (Null, Null) => Ok(Null),
             (Integer, Integer) | (Float, Float) | (Long, Long) | (Double, Double) => {
@@ -128,10 +131,12 @@ impl Merger<'_> {
             }
             (Object(a), Object(b)) => Ok(Object(self.common_superclass(a, b))),
             // Equal ones are handled above; here uninitialized are always
-            // different — that's a broken construction flow.
+            // different - that's a broken construction flow.
             (VerificationType::UninitializedThis | VerificationType::Uninitialized(_), _)
             | (_, VerificationType::UninitializedThis | VerificationType::Uninitialized(_)) => {
-                Err(self.invalid("слияние неинициализированных типов"))
+                Err(self.invalid(&format!(
+                    "merging uninitialized types ({first:?} with {second:?})"
+                )))
             }
             // Incompatible initialized (e.g. `int` from the `try` body and
             // `Throwable` from a handler in one slot): `Top`, like `javac`.
@@ -139,7 +144,7 @@ impl Merger<'_> {
         }
     }
 
-    /// Least common ancestor: climb the chains, fallback — `Object`.
+    /// Least common ancestor: climb the chains, fallback - `Object`.
     fn common_superclass(&self, first: &str, second: &str) -> String {
         if first == second {
             return first.to_string();

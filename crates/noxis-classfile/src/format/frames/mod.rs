@@ -2,11 +2,11 @@
 //!
 //! Frames are the most expensive part of any Rust obfuscator: the JVM verifier
 //! (class version ≥ 50) demands an exact `StackMapTable`, or the class won't load.
-//! Implementation options and their costs — `docs/stack.md`.
+//! Implementation options and their costs - `docs/stack.md`.
 //!
 //! Method: CFG over labels → worklist with types (`xfer`) → LUB merge (`merge`)
 //! → emit compact frames (`emit`). Byte offsets come from the same encoding the
-//! writer uses — otherwise frames would drift apart from the bytes.
+//! writer uses - otherwise frames would drift apart from the bytes.
 
 mod emit;
 mod flow;
@@ -113,7 +113,7 @@ pub fn compute_frames(
     emit::emit_frames(&states, &targets, &initial.locals, &merger)
 }
 
-/// The byte offset of each instruction — using the same encoding as the writer.
+/// The byte offset of each instruction - using the same encoding as the writer.
 fn layout(
     bare: &[&Insn],
     labels: &BTreeMap<Label, u32>,
@@ -188,7 +188,7 @@ fn run_worklist(
     Ok(())
 }
 
-/// Merge a state into an instruction; `true` — changed, keep walking.
+/// Merge a state into an instruction; `true` - changed, keep walking.
 fn flow_into(
     merger: &Merger<'_>,
     states: &mut [Option<State>],
@@ -220,7 +220,7 @@ fn flow_into(
 }
 
 /// CFG edges without exceptions: fallthrough + branch targets.
-/// The exception type at a handler's entry (`catch-all` — any throwable).
+/// The exception type at a handler's entry (`catch-all` - any throwable).
 fn catch_type(catch: &Option<String>) -> VerificationType {
     match catch {
         Some(name) => VerificationType::Object(name.clone()),

@@ -4,13 +4,13 @@
 //!
 //! Слой разделён на три несвязанные задачи:
 //!
-//! * [`archive`] — чистая работа с ZIP: порядок записей, сжатие, дубликаты;
-//! * [`signatures`] — срез невалидных подписей `META-INF/*.SF|RSA|DSA|EC`;
-//! * [`loader`] — перевод архива в [`Program`](noxis_classfile::Program)
+//! * [`archive`] - чистая работа с ZIP: порядок записей, сжатие, дубликаты;
+//! * [`signatures`] - срез невалидных подписей `META-INF/*.SF|RSA|DSA|EC`;
+//! * [`loader`] - перевод архива в [`Program`](noxis_classfile::Program)
 //!   и обратно (классы через [`format`](noxis_classfile::format), остальное
 //!   как ресурсы).
 //!
-//! Обфускация ресурсов — пасс `resources` в `noxis-passes`; сюда она не
+//! Обфускация ресурсов - пасс `resources` в `noxis-passes`; сюда она не
 //! входит, потому что ей нужен маппинг имён, а не I/O.
 
 pub mod archive;

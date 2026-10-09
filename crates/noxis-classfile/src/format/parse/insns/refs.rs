@@ -7,7 +7,7 @@ use super::super::pool::{class_name, dynamic_parts, expect_kind, is_interface, r
 use crate::error::ClassfileError;
 use crate::insn::{ArrayKind, Insn, InvokeKind};
 
-/// `Some` — the instruction is covered; `None` — hand it to the next converters.
+/// `Some` - the instruction is covered; `None` - hand it to the next converters.
 pub(super) fn convert_ref(
     instruction: &Instruction,
     pool: &ConstantPool<'_>,

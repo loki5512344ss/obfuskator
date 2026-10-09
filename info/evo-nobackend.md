@@ -22,25 +22,25 @@
 
 - **jadx переименовал их класс `if` → `Cif`** (keyword): класс `Cif.class` в джаре не существует,
   поэтому весь мёртвый код с ссылками на `Cif` вырезан, а не пересобран.
-- `?? r1;` (недообфусцированный фрагмент) и `throw th;` вне catch — в вырезанных методах.
-- Обфускация `setDaemon((A^B)+((A&B)<<1))` — это int-эквивалент `true` (A+B=1), javac не берёт.
+- `?? r1;` (недообфусцированный фрагмент) и `throw th;` вне catch - в вырезанных методах.
+- Обфускация `setDaemon((A^B)+((A&B)<<1))` - это int-эквивалент `true` (A+B=1), javac не берёт.
 
 ## Что заменено
 
 ### `cp` = `Avatar2` (аккаунт)
 - `initialize()` → `setUser(new cr("Player", null, "user", 0, null))`:
   **нет** `POST /api/auth/me`, нет чтения `EVO_TOKEN`, нет лаунчер-сессии, нет `refreshMe` (HTTP).
-  Профиль — локальный dummy.
-- `isAuthorized()` → `return true` — открываются все их шлюзы
+  Профиль - локальный dummy.
+- `isAuthorized()` → `return true` - открываются все их шлюзы
   (`Panel`, `Camera2`, `First`, `Friends`, `Crosshair2`, `KeyAssembler`, `SessionHeartbeat`).
 - `user()` → lazy-dummy: если профиль не задан, создаёт тот же dummy.
-  **`token == null`** — принципиально: `KeyAssembler.token()` и `SessionHeartbeat.token()`
+  **`token == null`** - принципиально: `KeyAssembler.token()` и `SessionHeartbeat.token()`
   возвращают null → `AttestClient4` (`evovis-protect.vercel.app`: challenge/attest/heartbeat)
   **недостижим**, поток сборки Shamir-ключа крутится вхолостую (sleep 500 мс).
 - Удалён приватный `refreshMe()` (единственный источник HTTP на auth/me).
 
 ### `akj` = `Report` (телеметрия)
-- `submit(String)` → no-op (единственный внешний вызов — `dn`/`Message2`, их команда отчёта).
+- `submit(String)` → no-op (единственный внешний вызов - `dn`/`Message2`, их команда отчёта).
 - Удалены `feedback`, `buildBody`, `run` (достигались только из `submit`).
 
 ### `alr` = `SessionHeartbeat` (сессия/отключение модулей)
@@ -50,12 +50,12 @@
 
 ## Почему остальное работает без их сервера
 
-- **Обычные строки мода** — `awc.d(String,int)`: статический LCG+XOR, ключа не требует.
-- **`SecureStrings`** (5 API-блобов: probe/friends/messages/cosmetic_sync/config_share) —
+- **Обычные строки мода** - `awc.d(String,int)`: статический LCG+XOR, ключа не требует.
+- **`SecureStrings`** (5 API-блобов: probe/friends/messages/cosmetic_sync/config_share) -
   `KeyAssembler.key()` всегда null → `get()` возвращает null → их серверные фичи
   (синк друзей, сообщения, косметика, конфиги) **выключаются сами**, без крашей на старте
   (null проверяется в самом `SecureStrings.get`).
-- `KeyAssembler`/`SealedBoot`/`RuntimeGuard`/JNI `NativeGuard` — живут только после сборки
+- `KeyAssembler`/`SealedBoot`/`RuntimeGuard`/JNI `NativeGuard` - живут только после сборки
   ключа, то есть недостижимы при `token == null`.
 
 ## Оставлено (осознанно)
@@ -82,7 +82,7 @@ OK: auth=local, report=no-op, heartbeat=off
 
 ## Ограничение
 
-В игре не прогоняли: здесь Linux, а их `evojdk` только win-x64. Запускать патченный джар —
-на Windows (их лаунчер или свой fabric-лодер); при проблемах — смотреть лог на загрузке
+В игре не прогоняли: здесь Linux, а их `evojdk` только win-x64. Запускать патченный джар -
+на Windows (их лаунчер или свой fabric-лодер); при проблемах - смотреть лог на загрузке
 модулей. Ожидаемо «пустым» (серверное) останется: список друзей, сообщения, косметика синк,
 аватарки, тикеты.

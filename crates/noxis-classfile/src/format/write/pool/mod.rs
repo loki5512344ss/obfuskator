@@ -2,10 +2,10 @@
 //!
 //! The pool is built from scratch by a deterministic walk (classes, fields,
 //! methods, attributes, code), so identical IR yields identical bytes. `Raw`
-//! attribute indices are not carried over — see `super::attrs`.
+//! attribute indices are not carried over - see `super::attrs`.
 //!
 //! The backend does not deduplicate: `add_*` always pushes a new entry. We cache
-//! semantic keys ourselves — otherwise `LocalVariableTable` and
+//! semantic keys ourselves - otherwise `LocalVariableTable` and
 //! `LocalVariableTypeTable` would get different `name_index` values for the same
 //! name, and HotSpot would reject the class (`LVTT entry ... does not match any
 //! LVT entry`). The walk order is deterministic, so the cache only changes pool

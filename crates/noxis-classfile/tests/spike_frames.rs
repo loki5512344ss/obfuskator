@@ -1,8 +1,8 @@
 //! Spike, часть 2: доступна ли **генерация** кадров `StackMapTable`.
 //!
 //! Ключевой вопрос `docs/stack.md` §3: считает ли `ristretto_classfile` кадры
-//! сам и отдаёт ли их наружу. Если да — наша работа сводится к записи; если
-//! нет — кадры придётся считать (или вендорить их `verifiers::bytecode`).
+//! сам и отдаёт ли их наружу. Если да - наша работа сводится к записи; если
+//! нет - кадры придётся считать (или вендорить их `verifiers::bytecode`).
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
@@ -82,7 +82,7 @@ fn inference_config() -> VerifierConfig {
     VerifierConfig::default().with_fallback_strategy(FallbackStrategy::AlwaysInference)
 }
 
-/// Без `StackMapTable` inference обязан пройти сам — значит, движок кадров у
+/// Без `StackMapTable` inference обязан пройти сам - значит, движок кадров у
 /// крейта есть, просто его результат не отдаётся наружу.
 #[test]
 fn inference_path_verifies_without_stack_map_table() {
@@ -94,7 +94,7 @@ fn inference_path_verifies_without_stack_map_table() {
     assert_eq!(results[0].path_used, VerificationPath::Inference);
 }
 
-/// Строгий режим без кадров обязан упасть — иначе требование `StackMapTable`
+/// Строгий режим без кадров обязан упасть - иначе требование `StackMapTable`
 /// для классов ≥ 50 не проверяется вовсе.
 #[test]
 fn strict_mode_rejects_missing_stack_map_table() {
@@ -102,7 +102,7 @@ fn strict_mode_rejects_missing_stack_map_table() {
     let config = VerifierConfig::default().with_fallback_strategy(FallbackStrategy::Strict);
     let outcome = verify_class(&class_file, &Permissive, &config);
 
-    // Строгий режим падает либо `Err`, либо `success == false` — оба варианта
+    // Строгий режим падает либо `Err`, либо `success == false` - оба варианта
     // приемлемы, важен сам отказ.
     let rejected = match &outcome {
         Err(_) => true,
@@ -113,13 +113,13 @@ fn strict_mode_rejects_missing_stack_map_table() {
 
 /// Негативный результат spike'а: кадр не на том сдвиге не отдаёт диагностику.
 ///
-/// Ждали `Ok(vec![result])` с заполненным `diagnostic.expected` — тогда
+/// Ждали `Ok(vec![result])` с заполненным `diagnostic.expected` - тогда
 /// генерация кадров шла бы итеративным путём через публичный API. Фактически
 /// `verify_class` в строгом режиме возвращает `Err(VerifyError)`, и ожидаемый
 /// кадр до нас не доходит: из крейта достаётся только место ошибки
 /// («merge point at offset N»), но не её содержимое.
 ///
-/// Вывод для `docs/stack.md` §3: проверять кадры крейт умеет, отдавать — нет.
+/// Вывод для `docs/stack.md` §3: проверять кадры крейт умеет, отдавать - нет.
 #[test]
 fn diagnostic_exposes_expected_frame_on_failure() {
     let mut class_file = branch_class();
@@ -127,7 +127,7 @@ fn diagnostic_exposes_expected_frame_on_failure() {
         .constant_pool
         .add_utf8("StackMapTable")
         .expect("utf8");
-    // Кадр на сдвиге 0, а настоящий якорь — на сдвиге 3.
+    // Кадр на сдвиге 0, а настоящий якорь - на сдвиге 3.
     class_file.attributes.push(Attribute::StackMapTable {
         name_index,
         frames: vec![StackFrame::SameFrame { frame_type: 0 }],

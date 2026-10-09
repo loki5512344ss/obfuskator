@@ -1,6 +1,6 @@
 //! Spike: пригоден ли `ristretto_classfile` как backend для чтения/записи.
 //!
-//! Критерии — `docs/stack.md` §2. Тест существует, чтобы ответы на вопросы
+//! Критерии - `docs/stack.md` §2. Тест существует, чтобы ответы на вопросы
 //! spike'а не устаревали: если крейт сломает хотя бы один пункт, сборка упадёт,
 //! и решение о backend'е придётся пересмотреть.
 //!
@@ -59,7 +59,7 @@ fn round_trip_preserves_identity() {
     assert_eq!(restored.constant_pool.len(), source.constant_pool.len());
 }
 
-/// Кадры `StackMapTable` конструируются и сериализуются публичным API —
+/// Кадры `StackMapTable` конструируются и сериализуются публичным API -
 /// значит, мы можем **записывать** кадры, а не только читать.
 #[test]
 fn stack_map_frames_are_constructible() {

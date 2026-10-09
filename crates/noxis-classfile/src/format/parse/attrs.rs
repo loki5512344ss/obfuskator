@@ -3,7 +3,7 @@
 //! `BootstrapMethods`, `EnclosingMethod`, `MethodParameters` and `ConstantValue`
 //! are modeled explicitly (they hold pool references that survive rebuilding);
 //! everything else that is structured but unneeded by us goes to `Raw` as-is.
-//! `Code` and `StackMapTable` are not handled here — the calling method code
+//! `Code` and `StackMapTable` are not handled here - the calling method code
 //! parses them (see `super::class`).
 
 use ristretto_classfile::ConstantPool;
@@ -131,7 +131,7 @@ fn inner(
     })
 }
 
-/// The enclosing class's method (`0` — class only, no method).
+/// The enclosing class's method (`0` - class only, no method).
 fn enclosing_method(
     pool: &ConstantPool<'_>,
     index: u16,

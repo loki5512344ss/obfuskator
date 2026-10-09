@@ -1,9 +1,11 @@
-//! Перевод архива в [`Program`] и обратно.
+//! Archive to [`Program`] and back.
 //!
-//! Правило простое: `*.class` уходит в парсер, всё остальное — в ресурсы.
-//! Обратно классы сериализуются первыми, затем ресурсы: порядок внутри
-//! архива на поведение не влияет, а фиксированный порядок даёт
-//! воспроизводимую запись.
+//! The rule is simple: `*.class` goes to the parser, everything else -
+//! to resources. Classes serialize first, then resources: the order inside
+//! the archive does not affect behaviour, and a fixed order gives
+//! reproducible writes.
+
+use std::collections::BTreeSet;
 
 use noxis_classfile::Program;
 use noxis_classfile::format;
@@ -11,13 +13,22 @@ use noxis_classfile::model::Resource;
 
 use crate::archive::{Entry, JarError};
 
-/// Разбирает записи архива: классы — через парсер, остальное — как ресурсы.
+/// Parses archive entries: classes - through the parser, the rest - as resources.
+///
+/// A name that repeats (multi-release jars carry the same class at the root
+/// and under `META-INF/versions/*`) is kept once, first occurrence wins:
+/// the flat model cannot hold two classes under one name, and later passes
+/// (rename maps, jar writing) assume uniqueness.
 pub fn load(entries: Vec<Entry>) -> Result<Program, JarError> {
     let mut program = Program::default();
+    let mut seen: BTreeSet<String> = BTreeSet::new();
 
     for entry in entries {
         if is_class_entry(&entry.name) {
-            program.classes.push(format::parse(&entry.data)?);
+            let class = format::parse(&entry.data)?;
+            if seen.insert(class.this_class.clone()) {
+                program.classes.push(class);
+            }
         } else {
             program.resources.push(Resource {
                 path: entry.name,
@@ -29,7 +40,7 @@ pub fn load(entries: Vec<Entry>) -> Result<Program, JarError> {
     Ok(program)
 }
 
-/// Собирает записи архива из [`Program`]: сначала классы, потом ресурсы.
+/// Assembles archive entries from [`Program`]: classes first, then resources.
 pub fn save(program: &Program) -> Result<Vec<Entry>, JarError> {
     let mut entries = Vec::with_capacity(program.classes.len() + program.resources.len());
 
@@ -44,7 +55,7 @@ pub fn save(program: &Program) -> Result<Vec<Entry>, JarError> {
     Ok(entries)
 }
 
-/// Классовый файл внутри архива: путь оканчивается на `.class`.
+/// A class file inside the archive: the path ends in `.class`.
 fn is_class_entry(name: &str) -> bool {
     name.len() > ".class".len() && name.ends_with(".class")
 }
@@ -78,7 +89,7 @@ mod tests {
         assert_eq!(save(&program).expect("save"), source);
     }
 
-    /// До P1 `format::parse` — заглушка; после P1 ожидается успешный разбор.
+    /// Class entries go through the parser (round-trip keeps them intact).
     #[test]
     fn class_entries_go_through_the_parser() {
         let entries = vec![
@@ -96,5 +107,23 @@ mod tests {
             }
             Err(other) => panic!("unexpected error: {other}"),
         }
+    }
+
+    /// Multi-release twins (`demo/App.class` + `META-INF/versions/9/...`):
+    /// the flat model keeps the first occurrence so no two classes ever
+    /// share one name downstream.
+    #[test]
+    fn duplicate_class_names_keep_first() {
+        use noxis_classfile::ClassBuilder;
+
+        let class = ClassBuilder::new("demo/App", None).build();
+        let bytes = format::write(&class).expect("write");
+        let entries = vec![
+            Entry::new("demo/App.class", bytes.clone()),
+            Entry::new("META-INF/versions/9/demo/App.class", bytes),
+        ];
+        let program = load(entries).expect("load");
+        assert_eq!(program.classes.len(), 1);
+        assert_eq!(program.classes[0].this_class, "demo/App");
     }
 }

@@ -1,8 +1,8 @@
-//! Состояние типов и transfer-функции инструкций.
+//! Type states and per-instruction transfer functions.
 //!
-//! Стек растёт вправо (`push` — в конец). `long`/`double` занимают два слота:
-//! значение + `Top`. Проверяется только ФОРМА (глубина, категории), не
-//! соответствие типов — неверные типы честно упадут на верификаторе JVM.
+//! The stack grows right (`push` appends). `long`/`double` take two slots:
+//! value + `Top`. Only the SHAPE is checked (depth, categories), not
+//! type agreement - wrong types honestly fail on the JVM verifier.
 
 pub(super) mod calls;
 pub(super) mod stack;
@@ -15,14 +15,14 @@ use crate::insn::{Arith, ArrayKind, BranchCond, Insn, SlotKind};
 use calls::{const_slots, context, convert_shapes, count_slots, invoke, prim_push, prim_slots};
 use stack::{dup, dup2, local_get, pop_slots, push, store_local, wide_push};
 
-/// Типы locals + operand stack в одной точке программы.
+/// Local types plus the operand stack at one program point.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(super) struct State {
     pub locals: Vec<VerificationType>,
     pub stack: Vec<VerificationType>,
 }
 
-/// Применить инструкцию к состоянию (на месте).
+/// Apply one instruction to the state (in place).
 pub(super) fn transfer(
     class: &str,
     method: &str,
@@ -31,7 +31,11 @@ pub(super) fn transfer(
     state: &mut State,
 ) -> Result<(), ClassfileError> {
     match insn {
-        Insn::Mark(label) => Err(invalid(class, method, &format!("маркер {label} не снят"))),
+        Insn::Mark(label) => Err(invalid(
+            class,
+            method,
+            &format!("marker {label} was not stripped"),
+        )),
         Insn::Nop => Ok(()),
         Insn::AconstNull => push(state, vec![VerificationType::Null]),
         Insn::Const(value) => {
@@ -51,29 +55,29 @@ pub(super) fn transfer(
         Insn::Iinc { index, .. } => {
             let current = local_get(state, *index, class, method)?;
             if current != VerificationType::Integer {
-                return Err(invalid(class, method, "iinc не по int"));
+                return Err(invalid(class, method, "iinc over a non-int"));
             }
             Ok(())
         }
         Insn::ArrayLoad(kind) => {
-            pop_slots(state, 1, class, method, "индекс массива")?;
-            let array = pop_slots(state, 1, class, method, "массив")?.remove(0);
-            push(state, vec![array_element(&array, *kind)])
+            pop_slots(state, 1, class, method, "array index")?;
+            let array = pop_slots(state, 1, class, method, "array")?.remove(0);
+            push(state, wide_push(array_element(&array, *kind)))
         }
         Insn::ArrayStore(kind) => {
             let count = match kind {
                 ArrayKind::Long | ArrayKind::Double => 2,
                 _ => 1,
             };
-            pop_slots(state, count, class, method, "значение")?;
-            pop_slots(state, 1, class, method, "индекс массива")?;
-            pop_slots(state, 1, class, method, "массив")?;
+            pop_slots(state, count, class, method, "value")?;
+            pop_slots(state, 1, class, method, "array index")?;
+            pop_slots(state, 1, class, method, "array")?;
             Ok(())
         }
         Insn::Pop => {
             let top = pop_slots(state, 1, class, method, "pop")?.remove(0);
             if top == VerificationType::Top {
-                return Err(invalid(class, method, "pop половины long/double"));
+                return Err(invalid(class, method, "pop of a long/double half"));
             }
             Ok(())
         }
@@ -90,7 +94,7 @@ pub(super) fn transfer(
         Insn::Swap => {
             let mut taken = pop_slots(state, 2, class, method, "swap")?;
             if taken.contains(&VerificationType::Top) {
-                return Err(invalid(class, method, "swap с половиной"));
+                return Err(invalid(class, method, "swap with a half"));
             }
             taken.reverse();
             push(state, taken)
@@ -100,7 +104,7 @@ pub(super) fn transfer(
             if *op == Arith::Neg {
                 pop_slots(state, slots as usize, class, method, "neg")?;
             } else if matches!(op, Arith::Shl | Arith::Shr | Arith::Ushr) {
-                // Сдвиг берёт (значение, int), а не два значения.
+                // A shift takes (value, int), not two values.
                 pop_slots(state, slots as usize + 1, class, method, "shift")?;
             } else {
                 pop_slots(state, 2 * slots as usize, class, method, "arith")?;
@@ -128,7 +132,7 @@ pub(super) fn transfer(
         Insn::Jsr(_) | Insn::Ret(_) => Err(invalid(
             class,
             method,
-            "подпрограммы jsr/ret не поддерживаются",
+            "jsr/ret subroutines are not supported",
         )),
         Insn::TableSwitch { .. } | Insn::LookupSwitch { .. } => {
             pop_slots(state, 1, class, method, "switch")?;
@@ -192,7 +196,7 @@ pub(super) fn transfer(
                 ArrayKind::Int => "[I",
                 ArrayKind::Long => "[J",
                 ArrayKind::Reference => {
-                    return Err(invalid(class, method, "newarray ссылочного типа"));
+                    return Err(invalid(class, method, "newarray of a reference type"));
                 }
             };
             push(
@@ -202,7 +206,16 @@ pub(super) fn transfer(
         }
         Insn::ANewArray(name) => {
             pop_slots(state, 1, class, method, "anewarray")?;
-            push(state, vec![VerificationType::Object(format!("[L{name};"))])
+            // `anewarray` adds one dimension: a plain class becomes
+            // `[L...;`, an already-array operand (`anewarray [B` for a
+            // partially bound multi-dim) gains one more `[`. Wrapping an
+            // array operand in `L...;` (`[L[B;`) is not a class.
+            let descriptor = if name.starts_with('[') {
+                format!("[{name}")
+            } else {
+                format!("[L{name};")
+            };
+            push(state, vec![VerificationType::Object(descriptor)])
         }
         Insn::MultiANewArray { descriptor, dims } => {
             pop_slots(state, *dims as usize, class, method, "multianewarray")?;

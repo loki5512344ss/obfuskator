@@ -71,7 +71,7 @@ fn empty_map_is_a_noop() {
 
 #[test]
 fn unicode_text_survives_unrelated_substitution() {
-    let text = "комментарий: Лорем_ипсум — org/example/Bar";
+    let text = "комментарий: Лорем_ипсум - org/example/Bar";
     assert_eq!(remap_text(text, &mapping()), text);
 }
 

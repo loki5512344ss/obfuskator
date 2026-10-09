@@ -1,6 +1,6 @@
 //! Method-body labels: where they must stand and how they resolve.
 //!
-//! The backend numbers instructions in order — labels are placed directly on the
+//! The backend numbers instructions in order - labels are placed directly on the
 //! numbers, without byte offsets.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -13,7 +13,7 @@ use crate::insn::Label;
 
 /// Instruction numbers that must carry a label.
 ///
-/// `extra` — debug-table positions (already as numbers): pass insertions must
+/// `extra` - debug-table positions (already as numbers): pass insertions must
 /// not leave them without a label.
 pub(super) fn label_indexes(
     code: &[Instruction],

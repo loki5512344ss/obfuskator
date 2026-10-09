@@ -1,6 +1,6 @@
 //! Backend `Code` → our IR method body: labels, exceptions, frames.
 //!
-//! The backend already turned byte offsets into instruction indices — the
+//! The backend already turned byte offsets into instruction indices - the
 //! converters work directly with them: labels are placed on branch targets,
 //! try-block boundaries and debug-table positions; frames are carried over as-is
 //! (index deltas). `LineNumberTable`/`LocalVariableTable` positions are labels

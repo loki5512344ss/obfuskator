@@ -3,7 +3,7 @@
 //! Frames are dropped and recomputed. Judges: determinism + IR round-trip +
 //! real `java -Xverify:all` for classes without external dependencies.
 //! (The backend's `verify_class` is unfit for acceptance: it expects frames
-//! in bytes while `from_bytes` hands out indices — see `todo.md`.)
+//! in bytes while `from_bytes` hands out indices - see `todo.md`.)
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
@@ -28,7 +28,7 @@ impl Hierarchy for MapHierarchy {
     }
 }
 
-/// JDK-only classes — `java` checks them fully.
+/// JDK-only classes - `java` checks them fully.
 const JDK_ONLY: [&str; 2] = [
     "dev/loki/lorep/util/TimeUtil",
     "dev/loki/lorep/util/PaginationUtil",
@@ -95,7 +95,7 @@ fn fixtures_recompute_and_verify() {
 /// A join with a `double` below on the stack must emit it as ONE entry.
 ///
 /// Regression: the emitter used to write the slot pair (`[Double, Top]`),
-/// like `javac` does for locals — but on the operand stack `javac` writes a
+/// like `javac` does for locals - but on the operand stack `javac` writes a
 /// bare `[Double]`, and HotSpot rejects the pair with
 /// `Inconsistent stackmap frames`.
 #[test]

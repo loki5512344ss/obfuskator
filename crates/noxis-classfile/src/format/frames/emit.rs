@@ -1,7 +1,7 @@
 //! Emitting compact frames at the points where the verifier expects them.
 //!
 //! A frame's kind is chosen by comparing with the previous frame
-//! (`Same`/`Append`/`Chop`/`SameLocals`, otherwise `Full`) — like `javac`.
+//! (`Same`/`Append`/`Chop`/`SameLocals`, otherwise `Full`) - like `javac`.
 //! Trailing `Top`s are trimmed both when comparing and when writing: an empty
 //! slot is not a type.
 
@@ -12,7 +12,7 @@ use super::xfer::State;
 use super::{StackMapFrame, VerificationType};
 use crate::error::ClassfileError;
 
-/// Frames at every point in `targets` (sorted — deltas in order).
+/// Frames at every point in `targets` (sorted - deltas in order).
 ///
 /// Deltas are in instruction numbers (like the backend after reading); the writer
 /// recomputes them into bytes itself.
@@ -50,7 +50,7 @@ fn select(
     previous: &[VerificationType],
     stack: &[VerificationType],
 ) -> StackMapFrame {
-    // Comparison is at variable granularity (`long` — one entry, like `javac`);
+    // Comparison is at variable granularity (`long` - one entry, like `javac`);
     // otherwise halves would produce `Append{[Top, Long]}`.
     let current = vars(locals);
     let base = vars(previous);
@@ -98,7 +98,7 @@ fn select(
     }
 }
 
-/// Stack entries → values: `[Double, Top]` — one entry (like `javac`).
+/// Stack entries → values: `[Double, Top]` - one entry (like `javac`).
 ///
 /// Unlike [`vars`], no trailing-`Top` trimming: every stack entry is live by
 /// construction, and dropping one would corrupt the depth.
@@ -122,7 +122,7 @@ fn stack_vars(stack: &[VerificationType]) -> Vec<VerificationType> {
     out
 }
 
-/// Slots → variables: `[Long, Top]` — one entry; trailing `Top`s — gone.
+/// Slots → variables: `[Long, Top]` - one entry; trailing `Top`s - gone.
 ///
 /// Single `Top`s inside (holes) are kept: in `Full` they are a legal type, and we
 /// don't allow them in `Append` (see `select`).

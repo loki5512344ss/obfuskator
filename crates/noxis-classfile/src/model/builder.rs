@@ -17,7 +17,7 @@ pub struct ClassBuilder {
 
 impl ClassBuilder {
     /// A new `public` class with the given superclass (`None` = `java/lang/Object`,
-    /// except for `java/lang/Object` itself — it has no superclass).
+    /// except for `java/lang/Object` itself - it has no superclass).
     pub fn new(this_class: impl Into<String>, super_class: Option<&str>) -> Self {
         let this_class = this_class.into();
         let super_class = match super_class {

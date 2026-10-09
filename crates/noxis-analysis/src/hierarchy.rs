@@ -40,7 +40,7 @@ impl ClassHierarchy {
             .and_then(|n| n.super_class.clone())
     }
 
-    /// Есть ли класс в иерархии (в том числе из внешнего classpath — нет).
+    /// Есть ли класс в иерархии (в том числе из внешнего classpath - нет).
     pub fn contains(&self, internal_name: &str) -> bool {
         self.nodes.contains_key(internal_name)
     }
@@ -57,7 +57,7 @@ impl ClassHierarchy {
 
     /// Является ли `child` подклассом `parent` (в пределах программы).
     ///
-    /// Неполная иерархия (внешние зависимости не грузим) — это осознанно:
+    /// Неполная иерархия (внешние зависимости не грузим) - это осознанно:
     /// обфускатор работает по артефакту, а не по всему classpath.
     pub fn is_subclass_of(&self, child: &str, parent: &str) -> bool {
         if child == parent {
@@ -137,10 +137,10 @@ pub enum RenameSafety {
 /// Оценка безопасности переименования метода.
 ///
 /// Правила (сознательно консервативные, как в `OBF/InheritanceAnalyzer`):
-/// - `<init>`/`<clinit>` — никогда;
-/// - `private`/`static`/`final`/`<package-private>` внутри финального класса — можно;
+/// - `<init>`/`<clinit>` - никогда;
+/// - `private`/`static`/`final`/`<package-private>` внутри финального класса - можно;
 /// - `public`/`protected`/`package-private`, если класс не `final` и есть
-///   наследники (внутри артефакта или нет) — нельзя, пока нет доказательства.
+///   наследники (внутри артефакта или нет) - нельзя, пока нет доказательства.
 pub fn method_rename_safety(
     program: &Program,
     hierarchy: &ClassHierarchy,

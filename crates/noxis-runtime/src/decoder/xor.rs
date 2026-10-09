@@ -7,7 +7,7 @@ use noxis_classfile::{Arith, ArrayKind, BranchCond, Cond, Convert, Insn, Prim, S
 
 use super::kdf::{Gen, c_int, c_long, load, store};
 
-/// Расшифровать `data` на месте; `len` — длина массива.
+/// Расшифровать `data` на месте; `len` - длина массива.
 pub(super) fn emit_xor(asm: &mut Gen, key: u16, nonce: u16, data: u16, len: u16) {
     let liga = Slots::alloc(asm);
     emit_seed(asm, key, nonce, &liga);
@@ -76,7 +76,7 @@ fn emit_states(asm: &mut Gen, slots: &Slots) {
     }
 }
 
-/// Один `splitmix64`: `sm += PHI`, финализатор — в `out`.
+/// Один `splitmix64`: `sm += PHI`, финализатор - в `out`.
 fn splitmix(asm: &mut Gen, sm: u16, out: u16) {
     const PHI: i64 = 0x9E37_79B9_7F4A_7C15u64 as i64;
     const C1: i64 = 0xBF58_476D_1CE4_E5B9u64 as i64;
@@ -105,7 +105,7 @@ fn finalize(asm: &mut Gen, amount: i32, constant: i64) {
     asm.emit(long_op(Arith::Mul));
 }
 
-/// Цикл по чанкам: свежий `next_u64` на 8 байт, внутренний — по байтам.
+/// Цикл по чанкам: свежий `next_u64` на 8 байт, внутренний - по байтам.
 ///
 /// Без `skip`-джойна: стрим всегда свеж на входе во внутренний цикл.
 fn emit_loop(asm: &mut Gen, data: u16, len: u16, slots: &Slots) {
@@ -188,7 +188,7 @@ fn emit_next(asm: &mut Gen, slots: &Slots) {
     asm.emit(c_int(17));
     asm.emit(shift(Arith::Shl));
     asm.emit(store(slots.tmp_c, SlotKind::Long));
-    // s2 ^= s0; s3 ^= s1; s1 ^= s2; s0 ^= s3 — строго по порядку.
+    // s2 ^= s0; s3 ^= s1; s1 ^= s2; s0 ^= s3 - строго по порядку.
     xor_into(asm, s[2], s[0]);
     xor_into(asm, s[3], s[1]);
     xor_into(asm, s[1], s[2]);

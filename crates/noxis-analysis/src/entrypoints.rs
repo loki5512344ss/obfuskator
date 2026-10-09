@@ -24,7 +24,7 @@ pub struct Entrypoints {
 }
 
 impl Entrypoints {
-    /// Собрать entrypoint'ы по программе (без keep-правил — их добавляет [`Self::merge`]).
+    /// Собрать entrypoint'ы по программе (без keep-правил - их добавляет [`Self::merge`]).
     pub fn collect(program: &Program) -> Self {
         let mut out = Self::default();
 
@@ -101,7 +101,7 @@ fn implements_serializable(program: &Program, start: &str) -> bool {
             return true;
         }
         let Some(class) = program.class(&name) else {
-            // Внешний предок: считаем, что не знаем — консервативно не keep'им.
+            // Внешний предок: считаем, что не знаем - консервативно не keep'им.
             continue;
         };
         if let Some(sup) = &class.super_class {
@@ -130,15 +130,15 @@ fn collect_service_interfaces(program: &Program) -> BTreeSet<String> {
 /// Линейный эвристический поиск имён в рефлексивных API.
 ///
 /// Полноценный dataflow не нужен: если рядом с вызовом `Class.forName(...)` /
-/// `getMethod(...)` лежит строковый литерал — это имя видно статически,
+/// `getMethod(...)` лежит строковый литерал - это имя видно статически,
 /// значит, его нельзя переименовывать.
 fn collect_reflective_names(out: &mut Entrypoints, code: &noxis_classfile::Code) {
-    /// API, чьи аргументы — **имена классов**.
+    /// API, чьи аргументы - **имена классов**.
     const CLASS_API: &[(&str, &str)] = &[
         ("java/lang/Class", "forName"),
         ("java/lang/ClassLoader", "loadClass"),
     ];
-    /// API, чьи аргументы — **имена членов** (поле/метод).
+    /// API, чьи аргументы - **имена членов** (поле/метод).
     const MEMBER_API: &[(&str, &str)] = &[
         ("java/lang/Class", "getMethod"),
         ("java/lang/Class", "getDeclaredMethod"),

@@ -1,14 +1,14 @@
-//! Тесты пасса констант: формы вычисляют исходник, мелочь цела.
+//! Constant-pass tests: forms compute the source value, trivia survives.
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use noxis_classfile::{ClassBuilder, Code, Const, Insn, Prim, Program, Version};
+use noxis_classfile::{ClassBuilder, Code, Const, Insn, MAX_METHOD_INSNS, Prim, Program, Version};
 use noxis_core::{Config, Context, Pass};
 
 use super::ConstantsPass;
 use super::forms::{Scheme, encrypt_int, encrypt_long};
 
-/// Формы обратимы арифметически (интерпретатор троек/пятёрок).
+/// Forms round-trip arithmetically (an interpreter for triples/quintuples).
 fn eval_int(insns: &[Insn]) -> i32 {
     match insns {
         [
@@ -20,7 +20,7 @@ fn eval_int(insns: &[Insn]) -> i32 {
             match op {
                 Xor => a ^ b,
                 Add => a.wrapping_add(*b),
-                _ => panic!("не та тройка: {insns:?}"),
+                _ => panic!("not a triple: {insns:?}"),
             }
         }
         [
@@ -30,7 +30,7 @@ fn eval_int(insns: &[Insn]) -> i32 {
             Insn::Const(Const::Int(b)),
             Insn::Binary { .. },
         ] => (a << 1) | (b & 1),
-        _ => panic!("не форма: {insns:?}"),
+        _ => panic!("not a form: {insns:?}"),
     }
 }
 
@@ -84,7 +84,7 @@ fn sample() -> Program {
     }
 }
 
-/// Пасс: большие константы разбиты, мелочь и структура целы.
+/// The pass: big constants are split, trivia and structure survive.
 #[test]
 fn constants_split_and_predicated() {
     let mut program = sample();
@@ -96,16 +96,54 @@ fn constants_split_and_predicated() {
         .apply(&mut ctx, &mut program)
         .expect("constants");
 
-    let code = program.classes[0].methods[0].code.as_ref().expect("код");
+    let code = program.classes[0].methods[0].code.as_ref().expect("code");
     let has = |v: i32| code.insns.contains(&Insn::Const(Const::Int(v)));
-    assert!(!has(100), "исходная константа уцелела");
-    assert!(has(3), "мелочь тронута");
+    assert!(!has(100), "source constant survived");
+    assert!(has(3), "trivia touched");
     assert!(
         !code.insns.contains(&Insn::Const(Const::Long(10))),
-        "long уцелел"
+        "long survived"
     );
-    // Opaque-предикат: мёртвая ветвь из `nop`.
-    assert!(code.insns.contains(&Insn::Nop), "нет предиката");
-    assert!(report.transformed >= 3, "мало трансформаций: {report:?}");
+    // Opaque predicate: a dead branch made of `nop`.
+    assert!(code.insns.contains(&Insn::Nop), "no predicate");
+    assert!(report.transformed >= 3, "few transforms: {report:?}");
     assert_eq!(report.skipped, 0);
+}
+
+/// A method that would blow past the 64KB ceiling stays byte-identical.
+#[test]
+fn oversized_methods_are_skipped() {
+    let code = Code {
+        max_stack: 2,
+        max_locals: 0,
+        insns: vec![Insn::Const(Const::Int(1_000_000)); MAX_METHOD_INSNS + 1],
+        exception_table: Vec::new(),
+        frames: Vec::new(),
+        attributes: Vec::new(),
+    };
+    let mut program = Program {
+        classes: vec![
+            ClassBuilder::new("demo/App", Some("java/lang/Object"))
+                .version(Version::JAVA_21)
+                .method_with_code(0x0009, "run", "()V", code)
+                .build(),
+        ],
+        resources: Vec::new(),
+    };
+    let mut ctx = Context::new(Config {
+        seed: Some(9),
+        ..Config::default()
+    });
+    let report = ConstantsPass
+        .apply(&mut ctx, &mut program)
+        .expect("constants");
+
+    let code = program.classes[0].methods[0].code.as_ref().expect("code");
+    assert!(
+        code.insns
+            .iter()
+            .all(|i| matches!(i, Insn::Const(Const::Int(1_000_000)))),
+        "oversized method was rewritten"
+    );
+    assert_eq!(report.skipped, 1);
 }
