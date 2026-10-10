@@ -46,7 +46,13 @@ pub fn save(program: &Program) -> Result<Vec<Entry>, JarError> {
 
     for class in &program.classes {
         let name = format!("{}.class", class.this_class);
-        entries.push(Entry::new(name, format::write(class)?));
+        let bytes = format::write(class).map_err(|error| {
+            JarError::Classfile(noxis_classfile::ClassfileError::Write(format!(
+                "{}: {error}",
+                class.this_class
+            )))
+        })?;
+        entries.push(Entry::new(name, bytes));
     }
     for resource in &program.resources {
         entries.push(Entry::new(resource.path.clone(), resource.data.clone()));

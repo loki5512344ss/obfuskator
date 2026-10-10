@@ -47,6 +47,12 @@ pub(super) fn convert(attr: &RtAttr, pool: &ConstantPool<'_>) -> Result<Attribut
                 .map(|index| class_name(pool, *index))
                 .collect::<Result<_, _>>()?,
         ),
+        RtAttr::PermittedSubclasses { class_indexes, .. } => Attribute::PermittedSubclasses(
+            class_indexes
+                .iter()
+                .map(|index| class_name(pool, *index))
+                .collect::<Result<_, _>>()?,
+        ),
         RtAttr::EnclosingMethod {
             class_index,
             method_index,

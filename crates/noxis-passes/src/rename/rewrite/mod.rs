@@ -134,6 +134,13 @@ fn rewrite_attributes(
                     }
                 }
             }
+            Attribute::PermittedSubclasses(classes) => {
+                for name in classes.iter_mut() {
+                    if let Some(mapped) = maps.classes.get(name.as_str()) {
+                        *name = mapped.clone();
+                    }
+                }
+            }
             Attribute::LocalVariableTable(vars) => {
                 for var in vars.iter_mut() {
                     var.descriptor = rewrite_descriptor(&var.descriptor, &maps.classes);

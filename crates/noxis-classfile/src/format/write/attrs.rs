@@ -145,6 +145,13 @@ pub(super) fn convert(attr: &Attribute, pool: &mut Pool) -> Result<RtAttr, Class
                 .map(|name| pool.class(name))
                 .collect::<Result<_, _>>()?,
         },
+        Attribute::PermittedSubclasses(classes) => RtAttr::PermittedSubclasses {
+            name_index: pool.utf8("PermittedSubclasses")?,
+            class_indexes: classes
+                .iter()
+                .map(|name| pool.class(name))
+                .collect::<Result<_, _>>()?,
+        },
         Attribute::ConstantValue(value) => RtAttr::ConstantValue {
             name_index: pool.utf8("ConstantValue")?,
             constant_value_index: pool.constant(value)?,

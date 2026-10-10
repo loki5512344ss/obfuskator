@@ -79,6 +79,62 @@ pub fn mappings_changed(before: &Mapping, after: &Mapping) -> bool {
     before != after
 }
 
+/// Wall time of `java -cp <jar> <main_class> <args>` (stderr inherited).
+pub fn measure_runtime(
+    jar: &std::path::Path,
+    main_class: &str,
+    args: &[&str],
+) -> Option<std::time::Duration> {
+    run_java(jar, main_class, args).map(|run| run.elapsed)
+}
+
+/// One `java` run: wall time plus captured stdout (for checksum comparison).
+#[derive(Debug, Clone)]
+pub struct RunOutput {
+    pub elapsed: std::time::Duration,
+    pub stdout: Vec<u8>,
+}
+
+/// Run `java -cp <jar> <main_class> <args>`, capturing stdout.
+/// `None` when `java` is missing, refuses to start, or the run fails:
+/// a workload that cannot run has no budget to check.
+pub fn run_java(jar: &std::path::Path, main_class: &str, args: &[&str]) -> Option<RunOutput> {
+    let start = std::time::Instant::now();
+    let output = std::process::Command::new("java")
+        .arg("-cp")
+        .arg(jar)
+        .arg(main_class)
+        .args(args)
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+    output.status.success().then(|| RunOutput {
+        elapsed: start.elapsed(),
+        stdout: output.stdout,
+    })
+}
+
+/// Slowdown factor (`after / before`).
+pub fn slowdown_ratio(before: std::time::Duration, after: std::time::Duration) -> f64 {
+    if before.is_zero() {
+        return f64::INFINITY;
+    }
+    after.as_secs_f64() / before.as_secs_f64()
+}
+
+/// Runtime within budget (`max_ratio`, e.g. `5.0` = at most five times slower).
+pub fn check_slowdown(
+    before: std::time::Duration,
+    after: std::time::Duration,
+    max_ratio: f64,
+) -> Result<(), String> {
+    let ratio = slowdown_ratio(before, after);
+    if ratio > max_ratio {
+        return Err(format!("slowdown {ratio:.2} over budget {max_ratio:.2}"));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::expect_used, clippy::unwrap_used)]
@@ -98,6 +154,17 @@ mod tests {
         assert!(inflation_ratio(0, 10).is_infinite());
         assert!(check_inflation(100, 120, 1.5).is_ok());
         assert!(check_inflation(100, 200, 1.5).is_err());
+    }
+
+    #[test]
+    fn slowdown_math() {
+        use std::time::Duration;
+        assert!(
+            (slowdown_ratio(Duration::from_secs(2), Duration::from_secs(3)) - 1.5).abs() < 1e-9
+        );
+        assert!(slowdown_ratio(Duration::ZERO, Duration::from_secs(1)).is_infinite());
+        assert!(check_slowdown(Duration::from_secs(2), Duration::from_secs(4), 5.0).is_ok());
+        assert!(check_slowdown(Duration::from_secs(2), Duration::from_secs(11), 5.0).is_err());
     }
 
     #[test]

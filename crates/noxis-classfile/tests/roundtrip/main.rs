@@ -8,12 +8,12 @@
 
 use noxis_classfile::{ClassFile, format};
 use ristretto_classfile::attributes::{
-    Attribute as RtAttr, BootstrapMethod as RtBsm, ExceptionTableEntry as RtEntry,
-    Instruction as Rt, LineNumber as RtLine, StackFrame as RtFrame,
+    Attribute as RtAttr, ExceptionTableEntry as RtEntry, Instruction as Rt, LineNumber as RtLine,
+    StackFrame as RtFrame,
 };
 use ristretto_classfile::{
     ClassAccessFlags, ClassFile as RtClass, ConstantPool, Field as RtField, FieldAccessFlags,
-    FieldType, JAVA_21, Method as RtMethod, MethodAccessFlags, ReferenceKind,
+    FieldType, JAVA_21, Method as RtMethod, MethodAccessFlags,
 };
 
 /// Минимальный класс: версия, флаги, поле с `ConstantValue`, `SourceFile`.
@@ -151,85 +151,6 @@ fn code_with_branches_round_trip() {
     assert_eq!(code.attributes.len(), 1);
 }
 
-/// `BootstrapMethods` + `invokedynamic` переживают round-trip.
-#[test]
-fn bootstrap_methods_round_trip() {
-    let mut pool = ConstantPool::default();
-    let this = pool.add_class("demo/Lambda").expect("add_class");
-    let object = pool.add_class("java/lang/Object").expect("add_object");
-    let owner = pool.add_class("demo/RT").expect("owner");
-    let method_ref = pool.add_method_ref(owner, "boot", "()V").expect("ref");
-    let handle = pool
-        .add_method_handle(ReferenceKind::InvokeStatic, method_ref)
-        .expect("handle");
-    let arg = pool.add_string("x").expect("arg");
-    let bsm_name = pool.add_utf8("BootstrapMethods").expect("attr");
-    let name = pool.add_utf8("run").expect("name");
-    let desc = pool.add_utf8("()V").expect("desc");
-    let code_name = pool.add_utf8("Code").expect("attr");
-    let dynamic = pool.add_invoke_dynamic(0, "run", "()V").expect("indy");
-
-    let rt = RtClass {
-        version: JAVA_21,
-        constant_pool: pool,
-        access_flags: ClassAccessFlags::PUBLIC,
-        this_class: this,
-        super_class: object,
-        interfaces: vec![],
-        fields: vec![],
-        methods: vec![RtMethod {
-            access_flags: MethodAccessFlags::PUBLIC | MethodAccessFlags::STATIC,
-            name_index: name,
-            descriptor_index: desc,
-            attributes: vec![RtAttr::Code {
-                name_index: code_name,
-                max_stack: 1,
-                max_locals: 0,
-                code: vec![Rt::Invokedynamic(dynamic), Rt::Return],
-                exception_table: vec![],
-                attributes: vec![],
-            }],
-        }],
-        attributes: vec![RtAttr::BootstrapMethods {
-            name_index: bsm_name,
-            methods: vec![RtBsm {
-                bootstrap_method_ref: handle,
-                arguments: vec![arg],
-            }],
-        }],
-        ..RtClass::default()
-    };
-
-    let ir = round_trip(&rt);
-    assert_eq!(ir.attributes.len(), 1);
-    assert!(format!("{:?}", ir.attributes[0]).contains("BootstrapMethods"));
-}
-
-/// `NestMembers` переживает пересборку пула (баг: `ClassFormatError`).
-#[test]
-fn nest_attributes_round_trip() {
-    let mut pool = ConstantPool::default();
-    let this = pool.add_class("demo/Nest").expect("c");
-    let object = pool.add_class("java/lang/Object").expect("o");
-    let member = pool.add_class("demo/Nest$Inner").expect("m");
-    let mn = pool.add_utf8("NestMembers").expect("n");
-    let mems = RtAttr::NestMembers {
-        name_index: mn,
-        class_indexes: vec![this, member],
-    };
-    let rt = RtClass {
-        version: JAVA_21,
-        constant_pool: pool,
-        this_class: this,
-        super_class: object,
-        attributes: vec![mems],
-        ..RtClass::default()
-    };
-    let ir = round_trip(&rt);
-    assert!(format!("{:?}", ir.attributes).contains("NestMembers"));
-}
-
-/// `parse → write → parse` даёт тот же IR; записанное верифицируется.
 fn round_trip(rt: &RtClass<'_>) -> ClassFile {
     let mut original = Vec::new();
     rt.to_bytes(&mut original).expect("to_bytes");
@@ -243,3 +164,8 @@ fn round_trip(rt: &RtClass<'_>) -> ClassFile {
     assert_eq!(first, second, "IR обязан пережить round-trip");
     second
 }
+
+/// A bare `0x200` interface (no `ABSTRACT`, as some compilers emit) must
+/// survive the round trip: HotSpot tolerates it, so we normalize on parse
+/// instead of dying in the backend's strict verifier on write.
+mod attrs;

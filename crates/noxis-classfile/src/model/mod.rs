@@ -23,6 +23,9 @@ pub enum Attribute {
     NestHost(String),
     /// `NestMembers`: the member classes of this nest host (JVMS §4.7.29).
     NestMembers(Vec<String>),
+    /// `PermittedSubclasses`: who may extend a sealed class (JVMS §4.7.31).
+    /// Stored as names: pool indices go stale when the pool is rebuilt.
+    PermittedSubclasses(Vec<String>),
     /// A field's `ConstantValue` (`static final`): a value from the pool.
     ConstantValue(Const),
     /// `BootstrapMethods` for `invokedynamic` (lambdas): method + arguments.

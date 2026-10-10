@@ -109,3 +109,33 @@ fn generic_signatures_rewrite_all_references() {
         &format!("Ljava/lang/Object;Ljava/lang/Comparable<L{helper};>;")
     );
 }
+
+/// Sealed classes keep working: `PermittedSubclasses` entries follow the
+/// mapping (a stale entry breaks loading with `ClassFormatError`, and raw
+/// pool indices would go stale on rebuild anyway).
+#[test]
+fn permitted_subclasses_follow_the_mapping() {
+    use noxis_classfile::{Attribute, ClassBuilder, Version};
+    let mut program = sample();
+    program.classes.push(
+        ClassBuilder::new("app/Sealed", Some("java/lang/Object"))
+            .version(Version::JAVA_21)
+            .attribute(Attribute::PermittedSubclasses(vec![
+                "app/Helper".to_string(),
+            ]))
+            .build(),
+    );
+    let ctx = run_rename(&mut program);
+    let helper = ctx.mapping.class("app/Helper").expect("renamed");
+    let sealed_name = ctx.mapping.class("app/Sealed").expect("renamed");
+    let sealed = program.class(sealed_name).expect("sealed");
+    let permitted = sealed
+        .attributes
+        .iter()
+        .find_map(|attr| match attr {
+            Attribute::PermittedSubclasses(names) => Some(names),
+            _ => None,
+        })
+        .expect("permitted");
+    assert_eq!(permitted, &vec![helper.to_string()]);
+}

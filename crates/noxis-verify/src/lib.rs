@@ -16,5 +16,6 @@ pub use java::{
 };
 pub use leaks::{RED_PATTERNS, SecretHit, check_patterns, collect_names, find_leaks, scan_secrets};
 pub use metrics::{
-    ProgramStats, check_inflation, inflation_ratio, mappings_changed, program_stats,
+    ProgramStats, RunOutput, check_inflation, check_slowdown, inflation_ratio, mappings_changed,
+    measure_runtime, program_stats, run_java, slowdown_ratio,
 };

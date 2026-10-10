@@ -11,6 +11,21 @@ use super::pool::{class_name, utf8};
 use crate::error::ClassfileError;
 use crate::model::{Attribute, ClassFile, Code, Field, Method, Version};
 
+/// JVMS 4.1: an interface implies `ABSTRACT` and ignores `SUPER`. Some
+/// compilers emit a bare `0x200` that HotSpot tolerates, but the strict
+/// backend verifier rejects it on write (after widening, as `0x201`) - so
+/// normalize once on parse. Interfaces are abstract by definition: no
+/// behaviour changes.
+fn normalize_class_flags(flags: u16) -> u16 {
+    const INTERFACE: u16 = 0x0200;
+    const SUPER: u16 = 0x0020;
+    const ABSTRACT: u16 = 0x0400;
+    if flags & INTERFACE == 0 {
+        return flags;
+    }
+    (flags | ABSTRACT) & !SUPER
+}
+
 /// Parse `.class` bytes into our IR.
 pub(crate) fn parse_class(bytes: &[u8]) -> Result<ClassFile, ClassfileError> {
     let rt = RtClass::from_bytes(bytes).map_err(|e| ClassfileError::Parse(e.to_string()))?;
@@ -25,7 +40,7 @@ pub(crate) fn parse_class(bytes: &[u8]) -> Result<ClassFile, ClassfileError> {
             minor: rt.version.minor(),
             major: rt.version.major(),
         },
-        access_flags: rt.access_flags.bits(),
+        access_flags: normalize_class_flags(rt.access_flags.bits()),
         this_class: class_name(pool, rt.this_class)?,
         super_class: optional_class(pool, rt.super_class)?,
         interfaces,
