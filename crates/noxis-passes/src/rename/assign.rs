@@ -196,6 +196,11 @@ pub(super) fn generate_packages(cfg: &Config, rng: &mut Rng) -> Vec<String> {
 }
 
 /// Rewrite a descriptor/signature: `Lpkg/Class;` → the new class name.
+///
+/// Generic signatures nest (`LMap<LString;LFoo;>;`): the name scan stops at
+/// `<` as well as `;`, so type arguments fall back into the main loop and
+/// get rewritten in turn. Stopping only at `;` swallowed the inner
+/// reference into one unmapped blob (a stale `Comparable<Old>` leak).
 pub(super) fn rewrite_descriptor(desc: &str, classes: &BTreeMap<String, String>) -> String {
     if !desc.contains('L') {
         return desc.to_string();
@@ -208,15 +213,17 @@ pub(super) fn rewrite_descriptor(desc: &str, classes: &BTreeMap<String, String>)
             continue;
         }
         let mut name = String::new();
+        let mut term = ';';
         for c in chars.by_ref() {
-            if c == ';' {
+            if c == ';' || c == '<' {
+                term = c;
                 break;
             }
             name.push(c);
         }
         out.push('L');
         out.push_str(classes.get(&name).map_or(name.as_str(), String::as_str));
-        out.push(';');
+        out.push(term);
     }
     out
 }
