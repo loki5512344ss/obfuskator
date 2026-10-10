@@ -27,6 +27,96 @@ pub fn java_available() -> bool {
         .is_ok_and(|out| out.status.success())
 }
 
+/// Whether `jadx` is available for decompile checks.
+pub fn jadx_available() -> bool {
+    Command::new("jadx")
+        .arg("--version")
+        .output()
+        .is_ok_and(|out| out.status.success())
+}
+
+/// Decompile quality of one jar: how much of the output jadx itself flags.
+///
+/// `JADX WARN` markers mean recovered-but-dubious structures; `Failed`
+/// markers mean unrecovered ones. Obfuscation wins when these climb while
+/// `java -Xverify:all` stays green: the bytecode runs, but readers drown.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DecompileReport {
+    /// `.java` files emitted.
+    pub files: usize,
+    /// Files with at least one `JADX WARN`.
+    pub files_with_warn: usize,
+    /// Total `JADX WARN` markers.
+    pub warns: usize,
+    /// `JADX WARN: Failed...` markers (unrecovered structures).
+    pub failed: usize,
+    /// Warn markers by kind (first word after the prefix).
+    pub kinds: std::collections::BTreeMap<String, usize>,
+    /// jadx exit code.
+    pub exit_code: Option<i32>,
+}
+
+/// Decompile a jar with jadx into a scratch dir and grade the output.
+/// `None` when jadx is missing or refuses to start.
+pub fn decompile_report(jar: &Path) -> Option<DecompileReport> {
+    if !jadx_available() {
+        return None;
+    }
+    let scratch = std::env::temp_dir().join(format!("noxis-jadx-rep-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&scratch);
+    let output = Command::new("jadx")
+        .arg("-q")
+        .arg("-d")
+        .arg(&scratch)
+        .arg(jar)
+        .output()
+        .ok()?;
+    let mut report = DecompileReport {
+        exit_code: output.status.code(),
+        ..DecompileReport::default()
+    };
+    let mut stack = vec![scratch.clone()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.extension().is_some_and(|ext| ext == "java") {
+                report.files += 1;
+                let text = std::fs::read(&path)
+                    .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+                    .unwrap_or_default();
+                let mut file_warns = 0;
+                for line in text.lines() {
+                    if let Some(rest) = line.find("JADX WARN:").map(|i| &line[i + 10..]) {
+                        let kind: String = rest
+                            .trim_start_matches([' ', '\'', '"'])
+                            .split_whitespace()
+                            .next()
+                            .unwrap_or("?")
+                            .trim_matches(['\'', '"', ':'])
+                            .to_string();
+                        *report.kinds.entry(kind.clone()).or_insert(0) += 1;
+                        if kind == "Failed" {
+                            report.failed += 1;
+                        }
+                        report.warns += 1;
+                        file_warns += 1;
+                    }
+                }
+                if file_warns > 0 {
+                    report.files_with_warn += 1;
+                }
+            }
+        }
+    }
+    let _ = std::fs::remove_dir_all(&scratch);
+    Some(report)
+}
+
 /// Проверить байты одного класса настоящим верификатором.
 pub fn verify_class_bytes(internal_name: &str, bytes: &[u8]) -> JavaVerdict {
     if !java_available() {

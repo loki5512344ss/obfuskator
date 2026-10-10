@@ -10,7 +10,10 @@ pub mod java;
 pub mod leaks;
 pub mod metrics;
 
-pub use java::{JavaVerdict, java_available, verify_class_bytes, verify_jar};
+pub use java::{
+    DecompileReport, JavaVerdict, decompile_report, jadx_available, java_available,
+    verify_class_bytes, verify_jar,
+};
 pub use leaks::{RED_PATTERNS, SecretHit, check_patterns, collect_names, find_leaks, scan_secrets};
 pub use metrics::{
     ProgramStats, check_inflation, inflation_ratio, mappings_changed, program_stats,

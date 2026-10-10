@@ -14,6 +14,9 @@ pub struct Args {
     /// TOML-конфиг с keep-паттернами (без него - пустой keep).
     #[arg(short, long)]
     pub config: Option<PathBuf>,
+    /// Декомпилировать jadx и показать долю распознанных структур.
+    #[arg(long)]
+    pub decompile: bool,
 }
 
 /// Показать классы, entrypoint'ы и keep-правила.
@@ -48,6 +51,22 @@ pub fn run(args: Args) -> Result<()> {
         analysis.entrypoints.reflective_names.len()
     );
     println!("keep-правил: {}", analysis.keep.len());
+    if args.decompile {
+        match noxis_verify::decompile_report(&args.input) {
+            None => println!("decompile: нет jadx"),
+            Some(report) => {
+                println!(
+                    "decompile: файлов {}, с WARN {}, WARN всего {}, Failed {}",
+                    report.files, report.files_with_warn, report.warns, report.failed
+                );
+                let mut kinds: Vec<(&String, &usize)> = report.kinds.iter().collect();
+                kinds.sort_by(|a, b| b.1.cmp(a.1));
+                for (kind, count) in kinds.iter().take(8) {
+                    println!("  {kind}: {count}");
+                }
+            }
+        }
+    }
     Ok(())
 }
 
@@ -62,6 +81,7 @@ mod tests {
         let args = Args {
             input: PathBuf::from("definitely-not-here.jar"),
             config: None,
+            decompile: false,
         };
         assert!(run(args).is_err());
     }
