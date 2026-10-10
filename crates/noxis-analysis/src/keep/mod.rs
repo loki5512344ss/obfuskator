@@ -2,11 +2,13 @@
 
 use std::collections::BTreeSet;
 
-use noxis_classfile::{Attribute, Const, Insn, Program};
+use noxis_classfile::Program;
 use regex::Regex;
 
 use crate::entrypoints::Entrypoints;
 use noxis_core::Config;
+
+mod scans;
 
 /// Compiled glob: `*` - anything but `/`, `**` - anything, `?` - one char.
 fn compile(pattern: &str) -> Result<Regex, regex::Error> {
@@ -37,28 +39,6 @@ fn compile(pattern: &str) -> Result<Regex, regex::Error> {
     out.push('$');
     Regex::new(&out)
 }
-
-/// Databinding entry points: `(owner, method names)` taking a `Class` literal.
-/// Gson, Jackson, fastjson2 and Moshi bind DTO fields by reflection from
-/// `X.class`, with no field-name string for the string-based detection.
-const DATABIND_CALLS: [(&str, &[&str]); 5] = [
-    ("com/google/gson/Gson", &["fromJson"]),
-    (
-        "com/fasterxml/jackson/databind/ObjectMapper",
-        &["readValue", "readValues", "convertValue"],
-    ),
-    (
-        "com/fasterxml/jackson/databind/ObjectReader",
-        &["readValue", "readValues"],
-    ),
-    ("com/alibaba/fastjson2/JSON", &["parseObject"]),
-    ("com/squareup/moshi/Moshi", &["adapter"]),
-];
-
-/// How far back an `X.class` literal may sit before the databind call.
-/// Argument setup is straight-line: a few loads between the literal and the
-/// call at most.
-const CLASS_LITERAL_WINDOW: usize = 10;
 
 /// "Do not touch" rules: explicit config patterns + entrypoints.
 #[derive(Debug, Default, Clone)]
@@ -128,58 +108,6 @@ impl KeepRules {
         }
     }
 
-    /// Methods referenced by `BootstrapMethods` (`invokedynamic`).
-    ///
-    /// Renaming such a method without patching the bootstrap record breaks
-    /// the class, and patching is a P2 task (see `todo.md`): keep the names.
-    pub fn absorb_bootstrap(&mut self, program: &Program) {
-        for class in &program.classes {
-            for method in &class.methods {
-                for attr in &method.attributes {
-                    if let Attribute::BootstrapMethods(methods) = attr {
-                        for bsm in methods {
-                            self.keep_member(bsm.name.clone());
-                            for arg in &bsm.args {
-                                if let Const::MethodHandle { name, .. } = arg {
-                                    self.keep_member(name.clone());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// Lock every field of every class passed as an `X.class` literal to a
-    /// databinding call. Gson/Jackson bind fields by reflection from the
-    /// literal; renaming them silently breaks deserialization, while the
-    /// class itself (never named in JSON) still renames freely.
-    pub fn absorb_databind(&mut self, program: &Program) {
-        for class in &program.classes {
-            for method in &class.methods {
-                let Some(code) = method.code.as_ref() else {
-                    continue;
-                };
-                for (index, insn) in code.insns.iter().enumerate() {
-                    let Insn::Invoke { owner, name, .. } = insn else {
-                        continue;
-                    };
-                    if !is_databind_call(owner, name) {
-                        continue;
-                    }
-                    if let Some(dto) = nearest_class_literal(&code.insns[..index])
-                        && let Some(dto_class) = program.class(&dto)
-                    {
-                        for field in &dto_class.fields {
-                            self.keep_member(field.name.clone());
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     /// Whether the class with this internal name stays.
     pub fn keeps_class(&self, internal_name: &str) -> bool {
         self.fixed.contains(internal_name)
@@ -213,35 +141,6 @@ impl KeepRules {
     }
 }
 
-/// Whether an invoke is a databinding call taking a `Class` literal.
-fn is_databind_call(owner: &str, name: &str) -> bool {
-    DATABIND_CALLS
-        .iter()
-        .any(|(candidate, names)| *candidate == owner && names.contains(&name))
-}
-
-/// The nearest `X.class` literal before a call site (control-flow
-/// boundaries stop the search: argument setup is straight-line).
-fn nearest_class_literal(before: &[Insn]) -> Option<String> {
-    let start = before.len().saturating_sub(CLASS_LITERAL_WINDOW);
-    for insn in before[start..].iter().rev() {
-        match insn {
-            Insn::Const(Const::Class(name)) => return Some(name.clone()),
-            Insn::Branch(..)
-            | Insn::Goto(_)
-            | Insn::TableSwitch { .. }
-            | Insn::LookupSwitch { .. }
-            | Insn::Jsr(_)
-            | Insn::Ret(_)
-            | Insn::Return(_)
-            | Insn::AReturn
-            | Insn::AThrow => return None,
-            _ => {}
-        }
-    }
-    None
-}
-
 /// A pattern compilation error.
 #[derive(Debug, thiserror::Error)]
 pub enum RuleError {
@@ -266,6 +165,7 @@ impl Analysis {
         keep.absorb(&entrypoints);
         keep.absorb_bootstrap(program);
         keep.absorb_databind(program);
+        keep.absorb_mixins(program);
 
         let locked_classes = program
             .classes

@@ -310,6 +310,7 @@ dependencies = [
  "noxis-core",
  "noxis-structure-check",
  "regex",
+ "serde_json",
  "thiserror",
  "tracing",
 ]

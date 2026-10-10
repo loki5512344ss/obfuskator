@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 regex = { workspace = true }
+serde_json = { workspace = true }
 noxis-classfile = { workspace = true }
 noxis-core = { workspace = true }
 thiserror = { workspace = true }
