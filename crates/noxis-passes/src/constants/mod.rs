@@ -9,7 +9,7 @@ mod forms;
 #[cfg(test)]
 mod tests;
 
-use noxis_analysis::ClassHierarchy;
+use noxis_analysis::{ClassHierarchy, JdkHierarchy};
 use noxis_classfile::{Const, Insn, MAX_METHOD_INSNS, Program, compute_frames};
 use noxis_core::{Context, CoreError, Pass, PassId, PassReport};
 
@@ -100,8 +100,9 @@ impl Pass for ConstantsPass {
             &mut predicates,
         )?;
         let hierarchy = ClassHierarchy::build(program);
+        let frames = JdkHierarchy::wrap(&hierarchy);
         for (ci, mi) in &mutated {
-            refresh_frames(program, *ci, *mi, &hierarchy)?;
+            refresh_frames(program, *ci, *mi, &frames)?;
         }
         Ok(report(replaced, predicates, skipped))
     }
@@ -187,7 +188,7 @@ fn refresh_frames(
     program: &mut Program,
     ci: usize,
     mi: usize,
-    hierarchy: &ClassHierarchy,
+    hierarchy: &JdkHierarchy<'_>,
 ) -> Result<(), CoreError> {
     let (name, snapshot) = {
         let class = program

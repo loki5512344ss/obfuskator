@@ -69,13 +69,24 @@ pub(super) fn rewrite_code(
                 }
                 *descriptor = rewrite_descriptor(descriptor, &maps.classes);
             }
-            Insn::New(name)
-            | Insn::CheckCast(name)
-            | Insn::InstanceOf(name)
-            | Insn::ANewArray(name) => {
+            Insn::New(name) => {
                 if let Some(mapped) = maps.classes.get(name.as_str()) {
                     *name = mapped.clone();
                 }
+            }
+            // Type operands may be array descriptors (`[Lpkg/Cls;`, `[B`):
+            // the element class inside follows the mapping, while a plain
+            // name takes the exact entry. A stale descriptor is worse than
+            // useless - later frame merges treat it as a ghost supertype.
+            Insn::CheckCast(name) | Insn::InstanceOf(name) | Insn::ANewArray(name) => {
+                if name.starts_with('[') {
+                    *name = rewrite_descriptor(name, &maps.classes);
+                } else if let Some(mapped) = maps.classes.get(name.as_str()) {
+                    *name = mapped.clone();
+                }
+            }
+            Insn::MultiANewArray { descriptor, .. } => {
+                *descriptor = rewrite_descriptor(descriptor, &maps.classes);
             }
             _ => {}
         }

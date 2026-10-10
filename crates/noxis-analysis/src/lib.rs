@@ -10,8 +10,10 @@
 
 pub mod entrypoints;
 pub mod hierarchy;
+pub mod jdk;
 pub mod keep;
 
 pub use entrypoints::Entrypoints;
 pub use hierarchy::{ClassHierarchy, RenameSafety, method_rename_safety};
+pub use jdk::JdkHierarchy;
 pub use keep::{Analysis, KeepRules, RuleError};

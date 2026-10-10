@@ -18,7 +18,7 @@ mod rewire;
 mod tests;
 
 use dispatch::{lookup_dispatch, opaque_guard, table_dispatch};
-use noxis_analysis::ClassHierarchy;
+use noxis_analysis::{ClassHierarchy, JdkHierarchy};
 use noxis_classfile::{Code, Insn, Label, Program, compute_frames};
 use noxis_core::{Context, CoreError, Pass, PassId, PassReport, Rng};
 use rewire::{dead_catch, invert_branches, split_blocks};
@@ -106,8 +106,9 @@ impl Pass for FlowPass {
             }
         }
         let hierarchy = ClassHierarchy::build(program);
+        let frames = JdkHierarchy::wrap(&hierarchy);
         for (ci, mi) in &mutated {
-            refresh_frames(program, *ci, *mi, &hierarchy)?;
+            refresh_frames(program, *ci, *mi, &frames)?;
         }
         Ok(report(&per_scheme, mutated.len(), skipped))
     }
@@ -225,7 +226,7 @@ fn refresh_frames(
     program: &mut Program,
     ci: usize,
     mi: usize,
-    hierarchy: &ClassHierarchy,
+    hierarchy: &JdkHierarchy<'_>,
 ) -> Result<(), CoreError> {
     let (name, snapshot) = {
         let class = program

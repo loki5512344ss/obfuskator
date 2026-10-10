@@ -129,11 +129,22 @@ pub(crate) fn method_slots(descriptor: &str) -> Result<MethodSlots, DescError> {
 }
 
 /// Element type from an array descriptor on the stack.
+///
+/// A `Null` arrayref throws (`NullPointerException`) - no value flows from
+/// it, so `Null` (bottom) is the precise answer for reference loads.
+/// Yielding `Object` instead poisons downstream joins permanently: the
+/// poison arrives through transient worklist states (before upstream slots
+/// refine) and `lub(Object, X)` can never narrow back. Primitive loads stay
+/// exact: the opcode determines the result regardless of the arrayref.
 pub(crate) fn array_element(
     array: &VerificationType,
     kind: crate::insn::ArrayKind,
 ) -> VerificationType {
+    use crate::format::VerificationType::Null;
     use crate::insn::ArrayKind::{Boolean, Byte, Char, Double, Float, Int, Long, Reference, Short};
+    if *array == Null && kind == Reference {
+        return Null;
+    }
     if let VerificationType::Object(descriptor) = array
         && let Some((dims, elem)) = split_array(descriptor)
     {

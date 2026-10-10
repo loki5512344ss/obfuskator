@@ -1,6 +1,6 @@
 //! Weaving junk classes into the reachability graph of live methods.
 
-use noxis_analysis::ClassHierarchy;
+use noxis_analysis::{ClassHierarchy, JdkHierarchy};
 use noxis_classfile::{Insn, InvokeKind, Program, compute_frames};
 use noxis_core::{CoreError, PassId};
 
@@ -68,7 +68,8 @@ pub(super) fn weave_first_reachable(
         .cloned()
         .ok_or_else(missing)?;
     let hierarchy = ClassHierarchy::build(program);
-    let frames = compute_frames(&class_name, &snapshot, &hierarchy)
+    let frames_hierarchy = JdkHierarchy::wrap(&hierarchy);
+    let frames = compute_frames(&class_name, &snapshot, &frames_hierarchy)
         .map_err(|e| CoreError::pass(PassId::Noise, e.to_string()))?;
     program
         .classes

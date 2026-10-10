@@ -11,7 +11,7 @@ mod tests;
 
 use std::collections::BTreeMap;
 
-use noxis_analysis::ClassHierarchy;
+use noxis_analysis::{ClassHierarchy, JdkHierarchy};
 use noxis_classfile::{Const, Insn, MAX_METHOD_INSNS, Program, compute_frames};
 use noxis_core::{Context, CoreError, NameStyle, Pass, PassId, PassReport, derive_seed};
 use noxis_runtime::{Scheme, decoder_class, decoder_owner, encrypt};
@@ -128,6 +128,7 @@ impl Pass for StringsPass {
         ctx.note(format!("string decoder: {owner}"));
         // Phase 4: frames of the touched methods.
         let hierarchy = ClassHierarchy::build(program);
+        let frames_hierarchy = JdkHierarchy::wrap(&hierarchy);
         for (ci, mi) in &mutated {
             let (name, snapshot) = {
                 let class = program
@@ -143,7 +144,7 @@ impl Pass for StringsPass {
                         .ok_or_else(|| pass_error("method vanished"))?,
                 )
             };
-            let frames = compute_frames(&name, &snapshot, &hierarchy)
+            let frames = compute_frames(&name, &snapshot, &frames_hierarchy)
                 .map_err(|e| pass_error(e.to_string()))?;
             program
                 .classes

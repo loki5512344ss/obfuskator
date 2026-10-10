@@ -15,7 +15,7 @@ mod tests;
 use crate::namegen::NameGenerator;
 use crate::rename::assign::parent_package;
 use body::{entry_body, helper_body};
-use noxis_analysis::ClassHierarchy;
+use noxis_analysis::{ClassHierarchy, JdkHierarchy};
 use noxis_classfile::{ClassBuilder, Field, Program, Version, compute_frames};
 use noxis_core::{Context, CoreError, Pass, PassId, PassReport};
 use weave::weave_first_reachable;
@@ -132,8 +132,9 @@ impl Pass for NoisePass {
 
         // Frames for every generated branching method.
         let hierarchy = ClassHierarchy::build(program);
+        let frames = JdkHierarchy::wrap(&hierarchy);
         for (ci, mi) in &fresh_methods {
-            refresh_frames(program, *ci, *mi, &hierarchy)?;
+            refresh_frames(program, *ci, *mi, &frames)?;
         }
 
         let mut woven = 0usize;
@@ -177,7 +178,7 @@ fn refresh_frames(
     program: &mut Program,
     ci: usize,
     mi: usize,
-    hierarchy: &ClassHierarchy,
+    hierarchy: &JdkHierarchy<'_>,
 ) -> Result<(), CoreError> {
     let (name, snapshot) = {
         let class = program

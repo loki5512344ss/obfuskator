@@ -38,6 +38,7 @@ struct Args {
     seed: u64,
     config: Option<String>,
     bisect: bool,
+    recompute: bool,
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -47,6 +48,7 @@ fn parse_args() -> Result<Args, String> {
         seed: 1,
         config: None,
         bisect: false,
+        recompute: false,
     };
     let mut iter = std::env::args().skip(1);
     while let Some(flag) = iter.next() {
@@ -62,6 +64,7 @@ fn parse_args() -> Result<Args, String> {
             }
             "--config" => args.config = Some(iter.next().ok_or("--config needs a value")?),
             "--bisect" => args.bisect = true,
+            "--recompute" => args.recompute = true,
             other => return Err(format!("unknown flag {other}")),
         }
     }
@@ -212,9 +215,61 @@ fn bisect(cp: &Path, class: &ClassFile) -> Option<BTreeSet<(String, String)>> {
     Some(keep)
 }
 
+/// Recompute frames for a method as written: proves whether the stored
+/// table is stale (code grew after compute) or compute itself truncates.
+fn recompute(jar_path: &Path, target: &str) -> Result<bool, String> {
+    use noxis_analysis::{ClassHierarchy, JdkHierarchy};
+    use noxis_classfile::compute_frames;
+
+    let entries = read_file(jar_path).map_err(|e| e.to_string())?;
+    let program = load(entries).map_err(|e| e.to_string())?;
+    let (class_name, method_name) = target
+        .rsplit_once('#')
+        .ok_or("usage: --recompute --class <internal/name>#<method>")?;
+    let class = program
+        .class(class_name)
+        .ok_or_else(|| format!("{class_name} not in jar"))?;
+    let method = class
+        .methods
+        .iter()
+        .find(|m| m.name == method_name)
+        .ok_or_else(|| format!("{method_name} not in {class_name}"))?;
+    let base = ClassHierarchy::build(&program);
+    let hierarchy = JdkHierarchy::wrap(&base);
+    let fresh =
+        compute_frames(class_name, method, &hierarchy).map_err(|e| format!("compute: {e}"))?;
+    let stored = method.code.as_ref().map_or(0, |c| c.frames.len());
+    println!("stored frames: {stored}, recomputed: {}", fresh.len());
+    // Last covered bci of each table.
+    for (label, frames) in [
+        (
+            "stored",
+            method.code.as_ref().map_or(&[][..], |c| &c.frames[..]),
+        ),
+        ("fresh", &fresh[..]),
+    ] {
+        let mut bci: i64 = -1;
+        for frame in frames {
+            let d = match frame {
+                noxis_classfile::StackMapFrame::Same { offset_delta }
+                | noxis_classfile::StackMapFrame::SameLocals { offset_delta, .. }
+                | noxis_classfile::StackMapFrame::Chop { offset_delta, .. }
+                | noxis_classfile::StackMapFrame::Append { offset_delta, .. }
+                | noxis_classfile::StackMapFrame::Full { offset_delta, .. } => *offset_delta as i64,
+            };
+            bci = if bci < 0 { d } else { bci + d + 1 };
+        }
+        println!("{label}: last bci {bci}");
+    }
+    Ok(false)
+}
+
 fn run() -> Result<bool, String> {
     let args = parse_args()?;
     let jar_path = PathBuf::from(&args.jar);
+    if args.recompute {
+        return recompute(&jar_path, &args.class);
+    }
     let config = load_config(&args)?;
     let entries = read_file(&jar_path).map_err(|e| e.to_string())?;
     if !entries
