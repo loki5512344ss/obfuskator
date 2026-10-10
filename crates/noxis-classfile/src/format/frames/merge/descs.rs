@@ -140,12 +140,20 @@ pub(crate) fn array_element(
         if dims > 1 {
             return VerificationType::Object(descriptor[1..].to_string());
         }
+        // `split_array` keeps the `L` prefix and trims `;`: a one-dimensional
+        // reference array yields its element as an internal name. Returning
+        // the array itself here poisoned every downstream join (the reported
+        // `... is not assignable to [<elem>;` family).
         return match elem {
             "Z" | "B" | "C" | "S" | "I" => VerificationType::Integer,
             "J" => VerificationType::Long,
             "F" => VerificationType::Float,
             "D" => VerificationType::Double,
-            _ => VerificationType::Object(format!("[{elem};")),
+            _ => VerificationType::Object(
+                elem.strip_prefix('L')
+                    .unwrap_or("java/lang/Object")
+                    .to_string(),
+            ),
         };
     }
     match kind {

@@ -4,7 +4,7 @@
 
 use super::super::{StackMapFrame, VerificationType, compute_frames};
 use super::{NoHierarchy, code_method, load, load_ref, store, store_ref};
-use crate::insn::{BranchCond, Cond, Const, Insn, Prim};
+use crate::insn::{ArrayKind, BranchCond, Cond, Const, Insn, Prim};
 
 /// `anewarray [B` (a partially bound multi-dim array) yields its descriptor
 /// verbatim: wrapping it again (`[L[B;`) is not a class and HotSpot rejects
@@ -188,4 +188,60 @@ fn array_load_wide_pushes_pair() {
             },
         ]
     );
+}
+
+/// `aaload` on a one-dimensional reference array yields the element type.
+///
+/// Real-world shape (`V8ValueObject.bind` family): one join inflow carries
+/// the loaded element (`Method`), the other the array itself (`Method[]`).
+/// The join must declare their LUB (`Object`); declaring the array rejects
+/// the element inflow (`Type ... is not assignable to ...`).
+#[test]
+fn aaload_on_ref_array_yields_element() {
+    let method = code_method(
+        "pick",
+        "([Ljava/lang/reflect/Method;)Ljava/lang/Object;",
+        2,
+        2,
+        vec![
+            Insn::Mark(0),
+            Insn::Const(Const::Int(0)),
+            Insn::Branch(BranchCond::Zero(Cond::Eq), 1),
+            load_ref(0),
+            Insn::Const(Const::Int(0)),
+            Insn::ArrayLoad(ArrayKind::Reference),
+            store_ref(1),
+            Insn::Goto(2),
+            Insn::Mark(1),
+            load_ref(0),
+            store_ref(1),
+            Insn::Mark(2),
+            load_ref(1),
+            Insn::AReturn,
+        ],
+        vec![],
+    );
+    let frames = compute_frames("demo/Pick", &method, &NoHierarchy).expect("frames");
+    // The join declares locals[1]; whatever the frame kind, it must be the
+    // LUB (`Object`), never the array the other inflow carried.
+    let mut saw_join = false;
+    for frame in &frames {
+        let locals: Vec<VerificationType> = match frame {
+            StackMapFrame::SameLocals { local, .. } => vec![local.clone()],
+            StackMapFrame::Append { locals, .. } | StackMapFrame::Full { locals, .. } => {
+                locals.clone()
+            }
+            StackMapFrame::Same { .. } | StackMapFrame::Chop { .. } => vec![],
+        };
+        for local in &locals {
+            assert_ne!(
+                local,
+                &VerificationType::Object("[Ljava/lang/reflect/Method;".to_string())
+            );
+            if local == &VerificationType::Object("java/lang/Object".to_string()) {
+                saw_join = true;
+            }
+        }
+    }
+    assert!(saw_join, "expected the join LUB in {frames:?}");
 }
