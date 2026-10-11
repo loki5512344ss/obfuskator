@@ -1,6 +1,6 @@
 //! Переписывание тела метода: инструкции, кадры, handler'ы, атрибуты кода.
 
-use noxis_classfile::{Code, Const, Insn};
+use noxis_classfile::{Code, Insn};
 use noxis_core::{Config, Context};
 
 use super::super::assign::{RenameMaps, rewrite_descriptor};
@@ -22,10 +22,8 @@ pub(super) fn rewrite_code(
     }
     for insn in code.insns.iter_mut() {
         match insn {
-            Insn::Const(Const::Class(name)) => {
-                if let Some(mapped) = maps.classes.get(name.as_str()) {
-                    *name = mapped.clone();
-                }
+            Insn::Const(value) => {
+                super::rewrite_const(value, maps);
             }
             Insn::GetStatic {
                 owner,
@@ -67,6 +65,12 @@ pub(super) fn rewrite_code(
                 if let Some(mapped) = maps.classes.get(owner.as_str()) {
                     *owner = mapped.clone();
                 }
+                *descriptor = rewrite_descriptor(descriptor, &maps.classes);
+            }
+            // The call-site name belongs to the functional interface and
+            // stays; the descriptor (captured receiver types) is rewritten,
+            // and the bootstrap table entry is handled with the attributes.
+            Insn::InvokeDynamic { descriptor, .. } => {
                 *descriptor = rewrite_descriptor(descriptor, &maps.classes);
             }
             Insn::New(name) => {
