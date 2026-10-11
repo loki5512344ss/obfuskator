@@ -166,23 +166,28 @@ pub(super) fn convert_op(op: Convert) -> RtInsn {
     }
 }
 
+/// `invoke*` family: the `itf` flag is authoritative (a Static/Special
+/// call may still target an interface method - `List.of`), so the pool
+/// entry kind follows it, not the opcode alone.
 pub(super) fn invoke(
     kind: InvokeKind,
     owner: &str,
     name: &str,
     descriptor: &str,
+    itf: bool,
     pool: &mut Pool,
 ) -> Result<RtInsn, ClassfileError> {
+    let itf = itf || matches!(kind, InvokeKind::Interface);
     Ok(match kind {
         InvokeKind::Virtual => {
-            RtInsn::Invokevirtual(pool.method_ref(owner, name, descriptor, kind)?)
+            RtInsn::Invokevirtual(pool.method_ref(owner, name, descriptor, itf)?)
         }
         InvokeKind::Special => {
-            RtInsn::Invokespecial(pool.method_ref(owner, name, descriptor, kind)?)
+            RtInsn::Invokespecial(pool.method_ref(owner, name, descriptor, itf)?)
         }
-        InvokeKind::Static => RtInsn::Invokestatic(pool.method_ref(owner, name, descriptor, kind)?),
+        InvokeKind::Static => RtInsn::Invokestatic(pool.method_ref(owner, name, descriptor, itf)?),
         InvokeKind::Interface => {
-            let index = pool.method_ref(owner, name, descriptor, kind)?;
+            let index = pool.method_ref(owner, name, descriptor, itf)?;
             RtInsn::Invokeinterface(index, arg_count(descriptor)?)
         }
     })

@@ -96,8 +96,9 @@ pub(crate) fn convert(
             owner,
             name,
             descriptor,
+            itf,
             ..
-        } => invoke(*kind, owner, name, descriptor, pool)?,
+        } => invoke(*kind, owner, name, descriptor, *itf, pool)?,
         Insn::InvokeDynamic {
             name,
             descriptor,

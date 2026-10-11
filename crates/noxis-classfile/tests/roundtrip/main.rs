@@ -169,3 +169,4 @@ fn round_trip(rt: &RtClass<'_>) -> ClassFile {
 /// survive the round trip: HotSpot tolerates it, so we normalize on parse
 /// instead of dying in the backend's strict verifier on write.
 mod attrs;
+mod code;

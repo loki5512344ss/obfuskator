@@ -9,7 +9,6 @@
 use ristretto_classfile::{Constant, ReferenceKind};
 
 use crate::error::ClassfileError;
-use crate::insn::InvokeKind;
 
 use super::{Pool, write_err};
 
@@ -42,9 +41,8 @@ impl Pool {
         owner: &str,
         name: &str,
         descriptor: &str,
-        kind: InvokeKind,
+        itf: bool,
     ) -> Result<u16, ClassfileError> {
-        let itf = matches!(kind, InvokeKind::Interface);
         let key = (
             owner.to_string(),
             name.to_string(),
@@ -94,7 +92,7 @@ impl Pool {
             ClassfileError::Write(format!("некорректный reference_kind {kind}: {e}"))
         })?;
         let reference = if itf {
-            self.method_ref(owner, name, descriptor, InvokeKind::Interface)?
+            self.method_ref(owner, name, descriptor, true)?
         } else if matches!(
             reference_kind,
             ReferenceKind::GetField
@@ -104,7 +102,7 @@ impl Pool {
         ) {
             self.field_ref(owner, name, descriptor)?
         } else {
-            self.method_ref(owner, name, descriptor, InvokeKind::Static)?
+            self.method_ref(owner, name, descriptor, false)?
         };
         let index = self
             .pool
