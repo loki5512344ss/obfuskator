@@ -8,6 +8,7 @@ use ristretto_classfile::attributes::{
     LocalVariableTypeTable as RtLocalType, Record as RtRecord,
 };
 
+use super::annotations::annotation;
 use super::helpers;
 use super::pool::Pool;
 use crate::error::ClassfileError;
@@ -176,6 +177,20 @@ pub(super) fn convert(attr: &Attribute, pool: &mut Pool) -> Result<RtAttr, Class
             parameters: params
                 .iter()
                 .map(|param| helpers::method_param(param, pool))
+                .collect::<Result<_, _>>()?,
+        },
+        Attribute::RuntimeVisibleAnnotations(annos) => RtAttr::RuntimeVisibleAnnotations {
+            name_index: pool.utf8("RuntimeVisibleAnnotations")?,
+            annotations: annos
+                .iter()
+                .map(|anno| annotation(anno, pool))
+                .collect::<Result<_, _>>()?,
+        },
+        Attribute::RuntimeInvisibleAnnotations(annos) => RtAttr::RuntimeInvisibleAnnotations {
+            name_index: pool.utf8("RuntimeInvisibleAnnotations")?,
+            annotations: annos
+                .iter()
+                .map(|anno| annotation(anno, pool))
                 .collect::<Result<_, _>>()?,
         },
         Attribute::Raw { name, data } => RtAttr::Unknown {

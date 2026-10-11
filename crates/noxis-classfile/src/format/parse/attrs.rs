@@ -10,7 +10,7 @@ use ristretto_classfile::ConstantPool;
 use ristretto_classfile::attributes::Attribute as RtAttr;
 
 use super::pool::{
-    class_name, const_from, is_interface, kind_code, name_and_type, ref_parts, utf8,
+    annotation, class_name, const_from, is_interface, kind_code, name_and_type, ref_parts, utf8,
 };
 use crate::error::ClassfileError;
 use crate::model::{Attribute, BootstrapMethod, InnerClass, MethodParameter, RecordComponent};
@@ -106,6 +106,22 @@ pub(super) fn convert(attr: &RtAttr, pool: &ConstantPool<'_>) -> Result<Attribut
             return Err(ClassfileError::Parse(
                 "Code/StackMapTable разбирает вызывающий код метода".into(),
             ));
+        }
+        RtAttr::RuntimeVisibleAnnotations { annotations, .. } => {
+            Attribute::RuntimeVisibleAnnotations(
+                annotations
+                    .iter()
+                    .map(|anno| annotation(pool, anno))
+                    .collect::<Result<_, _>>()?,
+            )
+        }
+        RtAttr::RuntimeInvisibleAnnotations { annotations, .. } => {
+            Attribute::RuntimeInvisibleAnnotations(
+                annotations
+                    .iter()
+                    .map(|anno| annotation(pool, anno))
+                    .collect::<Result<_, _>>()?,
+            )
         }
         other => raw(other)?,
     })

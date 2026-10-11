@@ -13,6 +13,7 @@ use noxis_core::{Config, Context, Pass, RenameConfig};
 use super::RenamePass;
 use super::assign::{RenameMaps, rewrite_descriptor};
 
+mod annotations;
 mod enclosing;
 mod rewrite;
 

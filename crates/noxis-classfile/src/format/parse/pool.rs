@@ -4,6 +4,7 @@ use ristretto_classfile::{Constant, ConstantPool, ReferenceKind};
 
 use crate::error::ClassfileError;
 use crate::insn::{Const, InvokeKind};
+use crate::model::{Annotation, AnnotationValue};
 
 /// The class name from a `CONSTANT_Class`.
 pub(super) fn class_name(pool: &ConstantPool<'_>, index: u16) -> Result<String, ClassfileError> {
@@ -180,5 +181,99 @@ pub(super) fn expect_kind(
         Err(ClassfileError::Parse(format!(
             "вызов {kind:?} указывает на несовместимую ссылку"
         )))
+    }
+}
+
+/// One `annotation` structure → IR (names, not pool indices).
+pub(super) fn annotation(
+    pool: &ConstantPool<'_>,
+    anno: &ristretto_classfile::attributes::Annotation,
+) -> Result<Annotation, ClassfileError> {
+    Ok(Annotation {
+        descriptor: utf8(pool, anno.type_index)?,
+        elements: anno
+            .elements
+            .iter()
+            .map(|pair| Ok((utf8(pool, pair.name_index)?, element(pool, &pair.value)?)))
+            .collect::<Result<_, ClassfileError>>()?,
+    })
+}
+
+/// One `element_value` → IR, keeping the tag (HotSpot checks it).
+fn element(
+    pool: &ConstantPool<'_>,
+    value: &ristretto_classfile::attributes::AnnotationElement,
+) -> Result<AnnotationValue, ClassfileError> {
+    use ristretto_classfile::attributes::AnnotationElement as E;
+    Ok(match value {
+        E::Byte { const_value_index } => {
+            AnnotationValue::Byte(const_int(pool, *const_value_index)?)
+        }
+        E::Char { const_value_index } => {
+            AnnotationValue::Char(const_int(pool, *const_value_index)?)
+        }
+        E::Short { const_value_index } => {
+            AnnotationValue::Short(const_int(pool, *const_value_index)?)
+        }
+        E::Boolean { const_value_index } => {
+            AnnotationValue::Boolean(const_int(pool, *const_value_index)?)
+        }
+        E::Int { const_value_index } => AnnotationValue::Int(const_int(pool, *const_value_index)?),
+        E::Long { const_value_index } => {
+            AnnotationValue::Long(const_long(pool, *const_value_index)?)
+        }
+        E::Float { const_value_index } => {
+            AnnotationValue::Float(const_float(pool, *const_value_index)?)
+        }
+        E::Double { const_value_index } => {
+            AnnotationValue::Double(const_double(pool, *const_value_index)?)
+        }
+        E::String { const_value_index } => AnnotationValue::String(utf8(pool, *const_value_index)?),
+        E::Enum {
+            type_name_index,
+            const_name_index,
+        } => AnnotationValue::Enum {
+            descriptor: utf8(pool, *type_name_index)?,
+            name: utf8(pool, *const_name_index)?,
+        },
+        E::Class { class_info_index } => AnnotationValue::Class(utf8(pool, *class_info_index)?),
+        E::Annotation { annotation: nested } => {
+            AnnotationValue::Nested(Box::new(annotation(pool, nested)?))
+        }
+        E::Array { values } => AnnotationValue::Array(
+            values
+                .iter()
+                .map(|value| element(pool, value))
+                .collect::<Result<_, _>>()?,
+        ),
+    })
+}
+
+/// The `CONSTANT_Integer` behind a `B`/`C`/`S`/`Z`/`I` element.
+fn const_int(pool: &ConstantPool<'_>, index: u16) -> Result<i32, ClassfileError> {
+    match const_from(pool, index)? {
+        Const::Int(v) => Ok(v),
+        _ => Err(ClassfileError::Parse("не Integer".into())),
+    }
+}
+
+fn const_long(pool: &ConstantPool<'_>, index: u16) -> Result<i64, ClassfileError> {
+    match const_from(pool, index)? {
+        Const::Long(v) => Ok(v),
+        _ => Err(ClassfileError::Parse("не Long".into())),
+    }
+}
+
+fn const_float(pool: &ConstantPool<'_>, index: u16) -> Result<f32, ClassfileError> {
+    match const_from(pool, index)? {
+        Const::Float(v) => Ok(v),
+        _ => Err(ClassfileError::Parse("не Float".into())),
+    }
+}
+
+fn const_double(pool: &ConstantPool<'_>, index: u16) -> Result<f64, ClassfileError> {
+    match const_from(pool, index)? {
+        Const::Double(v) => Ok(v),
+        _ => Err(ClassfileError::Parse("не Double".into())),
     }
 }

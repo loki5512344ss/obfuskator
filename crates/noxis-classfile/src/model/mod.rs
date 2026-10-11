@@ -1,8 +1,10 @@
 //! The "program" structure - the unit of work for the pipeline.
 
+pub mod annotations;
 pub mod builder;
 pub mod version;
 
+pub use annotations::{Annotation, AnnotationValue};
 pub use version::Version;
 
 use crate::format::StackMapFrame;
@@ -41,6 +43,11 @@ pub enum Attribute {
     Record(Vec<RecordComponent>),
     /// `LocalVariableTypeTable`: generic local signatures (like LVT).
     LocalVariableTypeTable(Vec<LocalVariableType>),
+    /// `RuntimeVisibleAnnotations` (JVMS §4.7.16): parsed, not raw bytes -
+    /// reflection reads them at runtime and raw indices go stale on write.
+    RuntimeVisibleAnnotations(Vec<Annotation>),
+    /// `RuntimeInvisibleAnnotations` (JVMS §4.7.17): CLASS-retention ones.
+    RuntimeInvisibleAnnotations(Vec<Annotation>),
     /// Everything else: name + raw `info` bytes (careful with pool indices).
     Raw {
         name: String,

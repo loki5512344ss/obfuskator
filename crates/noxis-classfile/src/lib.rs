@@ -23,9 +23,9 @@ pub use insn::{
 };
 pub use model::builder::{ClassBuilder, empty_code};
 pub use model::{
-    Attribute, BootstrapMethod, ClassFile, Code, ExceptionHandler, Field, InnerClass, LineNumber,
-    LocalVariable, LocalVariableType, Method, MethodParameter, Program, RecordComponent, Resource,
-    Version,
+    Annotation, AnnotationValue, Attribute, BootstrapMethod, ClassFile, Code, ExceptionHandler,
+    Field, InnerClass, LineNumber, LocalVariable, LocalVariableType, Method, MethodParameter,
+    Program, RecordComponent, Resource, Version,
 };
 
 /// Safety budget: a method body that would grow past this many instructions

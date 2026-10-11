@@ -3,6 +3,7 @@
 //! The pool is built from scratch by a deterministic walk; the backend recomputes
 //! instruction numbers into byte offsets and verifies the result (`verify`).
 
+mod annotations;
 mod attrs;
 pub(crate) mod code;
 mod helpers;
