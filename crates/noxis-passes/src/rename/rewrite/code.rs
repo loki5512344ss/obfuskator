@@ -6,6 +6,7 @@ use noxis_core::{Config, Context};
 use super::super::assign::{RenameMaps, rewrite_descriptor};
 use super::rewrite_attributes;
 use super::rewrite_frame;
+use super::rewrite_method_ref;
 
 pub(super) fn rewrite_code(
     code: &mut Code,
@@ -59,13 +60,7 @@ pub(super) fn rewrite_code(
                 descriptor,
                 ..
             } => {
-                if let Some(new_name) = maps.method(owner, name, descriptor) {
-                    *name = new_name;
-                }
-                if let Some(mapped) = maps.classes.get(owner.as_str()) {
-                    *owner = mapped.clone();
-                }
-                *descriptor = rewrite_descriptor(descriptor, &maps.classes);
+                rewrite_method_ref(owner, name, descriptor, maps);
             }
             // The call-site name belongs to the functional interface and
             // stays; the descriptor (captured receiver types) is rewritten,

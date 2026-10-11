@@ -149,6 +149,14 @@ fn rewrite_attributes(
                     }
                 }
             }
+            Attribute::EnclosingMethod { class, method } => {
+                if let Some((name, descriptor)) = method.as_mut() {
+                    rewrite_method_ref(class, name, descriptor, maps);
+                }
+                if let Some(mapped) = maps.classes.get(class.as_str()) {
+                    *class = mapped.clone();
+                }
+            }
             Attribute::LocalVariableTable(vars) => {
                 for var in vars.iter_mut() {
                     var.descriptor = rewrite_descriptor(&var.descriptor, &maps.classes);
@@ -174,18 +182,23 @@ fn rewrite_attributes(
 
 /// A method reference (invoke/bootstrap/method-handle): the owner follows
 /// class renames, the name follows member renames, the descriptor is
-/// rewritten. Callers decide whether the name may move at all.
+/// rewritten. Array owners (`[Lpkg/C;` - e.g. `clone` on arrays) name the
+/// element class inside a descriptor, so they take the descriptor path.
 fn rewrite_method_ref(
     owner: &mut String,
     name: &mut String,
     descriptor: &mut String,
     maps: &RenameMaps,
 ) {
-    if let Some(new_name) = maps.method(owner, name, descriptor) {
-        *name = new_name;
-    }
-    if let Some(mapped) = maps.classes.get(owner.as_str()) {
-        *owner = mapped.clone();
+    if owner.starts_with('[') {
+        *owner = rewrite_descriptor(owner, &maps.classes);
+    } else {
+        if let Some(new_name) = maps.method(owner, name, descriptor) {
+            *name = new_name;
+        }
+        if let Some(mapped) = maps.classes.get(owner.as_str()) {
+            *owner = mapped.clone();
+        }
     }
     *descriptor = rewrite_descriptor(descriptor, &maps.classes);
 }
