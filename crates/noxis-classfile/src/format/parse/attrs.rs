@@ -123,6 +123,36 @@ pub(super) fn convert(attr: &RtAttr, pool: &ConstantPool<'_>) -> Result<Attribut
                     .collect::<Result<_, _>>()?,
             )
         }
+        RtAttr::RuntimeVisibleParameterAnnotations {
+            parameter_annotations,
+            ..
+        } => Attribute::RuntimeVisibleParameterAnnotations(
+            parameter_annotations
+                .iter()
+                .map(|param| {
+                    param
+                        .annotations
+                        .iter()
+                        .map(|anno| annotation(pool, anno))
+                        .collect::<Result<_, _>>()
+                })
+                .collect::<Result<_, _>>()?,
+        ),
+        RtAttr::RuntimeInvisibleParameterAnnotations {
+            parameter_annotations,
+            ..
+        } => Attribute::RuntimeInvisibleParameterAnnotations(
+            parameter_annotations
+                .iter()
+                .map(|param| {
+                    param
+                        .annotations
+                        .iter()
+                        .map(|anno| annotation(pool, anno))
+                        .collect::<Result<_, _>>()
+                })
+                .collect::<Result<_, _>>()?,
+        ),
         other => raw(other)?,
     })
 }

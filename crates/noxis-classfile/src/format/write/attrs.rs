@@ -193,6 +193,38 @@ pub(super) fn convert(attr: &Attribute, pool: &mut Pool) -> Result<RtAttr, Class
                 .map(|anno| annotation(anno, pool))
                 .collect::<Result<_, _>>()?,
         },
+        Attribute::RuntimeVisibleParameterAnnotations(params) => {
+            RtAttr::RuntimeVisibleParameterAnnotations {
+                name_index: pool.utf8("RuntimeVisibleParameterAnnotations")?,
+                parameter_annotations: params
+                    .iter()
+                    .map(|param| {
+                        Ok(ristretto_classfile::attributes::ParameterAnnotation {
+                            annotations: param
+                                .iter()
+                                .map(|anno| annotation(anno, pool))
+                                .collect::<Result<_, _>>()?,
+                        })
+                    })
+                    .collect::<Result<_, _>>()?,
+            }
+        }
+        Attribute::RuntimeInvisibleParameterAnnotations(params) => {
+            RtAttr::RuntimeInvisibleParameterAnnotations {
+                name_index: pool.utf8("RuntimeInvisibleParameterAnnotations")?,
+                parameter_annotations: params
+                    .iter()
+                    .map(|param| {
+                        Ok(ristretto_classfile::attributes::ParameterAnnotation {
+                            annotations: param
+                                .iter()
+                                .map(|anno| annotation(anno, pool))
+                                .collect::<Result<_, _>>()?,
+                        })
+                    })
+                    .collect::<Result<_, _>>()?,
+            }
+        }
         Attribute::Raw { name, data } => RtAttr::Unknown {
             name_index: pool.utf8(name)?,
             info: data.clone(),

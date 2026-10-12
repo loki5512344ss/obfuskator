@@ -12,6 +12,13 @@ pub(super) fn rewrite_annotations(annotations: &mut [Annotation], maps: &RenameM
     }
 }
 
+/// Per-parameter annotation lists (`RuntimeVisibleParameterAnnotations`).
+pub(super) fn rewrite_parameter_annotations(params: &mut [Vec<Annotation>], maps: &RenameMaps) {
+    for param in params.iter_mut() {
+        rewrite_annotations(param, maps);
+    }
+}
+
 fn rewrite_annotation(anno: &mut Annotation, maps: &RenameMaps) {
     anno.descriptor = rewrite_descriptor(&anno.descriptor, &maps.classes);
     for (_, value) in anno.elements.iter_mut() {

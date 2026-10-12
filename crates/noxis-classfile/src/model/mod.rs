@@ -48,6 +48,12 @@ pub enum Attribute {
     RuntimeVisibleAnnotations(Vec<Annotation>),
     /// `RuntimeInvisibleAnnotations` (JVMS §4.7.17): CLASS-retention ones.
     RuntimeInvisibleAnnotations(Vec<Annotation>),
+    /// `RuntimeVisibleParameterAnnotations` (JVMS §4.7.18): per-parameter
+    /// annotations. Parsed like the class-level ones - raw pool indices go
+    /// stale when the pool is rebuilt.
+    RuntimeVisibleParameterAnnotations(Vec<Vec<Annotation>>),
+    /// `RuntimeInvisibleParameterAnnotations` (JVMS §4.7.19).
+    RuntimeInvisibleParameterAnnotations(Vec<Vec<Annotation>>),
     /// Everything else: name + raw `info` bytes (careful with pool indices).
     Raw {
         name: String,

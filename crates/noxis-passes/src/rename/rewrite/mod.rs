@@ -3,7 +3,7 @@
 mod annotations;
 mod code;
 
-use annotations::rewrite_annotations;
+use annotations::{rewrite_annotations, rewrite_parameter_annotations};
 use noxis_classfile::{Attribute, ClassFile, Const, StackMapFrame, VerificationType};
 use noxis_core::{Config, Context};
 
@@ -146,6 +146,10 @@ fn rewrite_attributes(
             Attribute::RuntimeVisibleAnnotations(annos)
             | Attribute::RuntimeInvisibleAnnotations(annos) => {
                 rewrite_annotations(annos, maps);
+            }
+            Attribute::RuntimeVisibleParameterAnnotations(params)
+            | Attribute::RuntimeInvisibleParameterAnnotations(params) => {
+                rewrite_parameter_annotations(params, maps);
             }
             Attribute::BootstrapMethods(methods) => {
                 for bsm in methods.iter_mut() {
