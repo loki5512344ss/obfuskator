@@ -8,7 +8,10 @@ use regex::Regex;
 use crate::entrypoints::Entrypoints;
 use noxis_core::Config;
 
+mod dispatch;
 mod scans;
+
+pub use dispatch::external_dispatch_families;
 
 /// Compiled glob: `*` - anything but `/`, `**` - anything, `?` - one char.
 fn compile(pattern: &str) -> Result<Regex, regex::Error> {
@@ -165,7 +168,6 @@ impl Analysis {
         keep.absorb(&entrypoints);
         keep.absorb_bootstrap(program);
         keep.absorb_databind(program);
-        keep.absorb_mixins(program);
 
         let locked_classes = program
             .classes

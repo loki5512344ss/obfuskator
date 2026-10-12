@@ -178,6 +178,58 @@ fn java_available() -> bool {
         .is_ok_and(|out| out.status.success())
 }
 
+/// A v1.5 (major 49) class must not carry a `StackMapTable`: the old verifier
+/// uses type inference, and ASM/Paper reject the attribute on pre-v6 classes
+/// ("Class versions V1_5 or less must use F_NEW frames"). Real case: the
+/// string-decoder is built at major 49; a later pass recomputes its frames,
+/// and the writer used to emit them anyway - Paper then failed to convert the
+/// plugin class.
+#[test]
+fn old_version_class_omits_stack_map_table() {
+    let insns = vec![
+        Insn::Load {
+            slot: 0,
+            kind: SlotKind::Int,
+        },
+        Insn::Branch(BranchCond::Zero(Cond::Ne), 100),
+        Insn::Const(Const::Int(0)),
+        Insn::Return(Some(Prim::Int)),
+        Insn::Mark(100),
+        Insn::Const(Const::Int(1)),
+        Insn::Return(Some(Prim::Int)),
+    ];
+    let code = Code {
+        max_stack: 1,
+        max_locals: 1,
+        insns,
+        exception_table: Vec::new(),
+        frames: Vec::new(),
+        attributes: Vec::new(),
+    };
+    let class = ClassBuilder::new("demo/Old", Some("java/lang/Object"))
+        .version(Version {
+            minor: 0,
+            major: 49,
+        })
+        .method_with_code(0x0009, "pick", "(I)I", code)
+        .build();
+    let hierarchy = MapHierarchy::default();
+    let frames = compute_frames(&class.this_class, &class.methods[0], &hierarchy).expect("frames");
+    assert!(
+        !frames.is_empty(),
+        "the branch must produce at least one frame"
+    );
+    let mut class = class;
+    class.methods[0].code.as_mut().expect("code").frames = frames;
+    let bytes = format::write(&class).expect("write v1.5 class");
+    assert!(
+        !bytes
+            .windows(b"StackMapTable".len())
+            .any(|w| w == b"StackMapTable"),
+        "a major-49 class must not emit StackMapTable"
+    );
+}
+
 /// Write a class into a package tree and run `java -Xverify:all`.
 /// Success means loading without verification errors (`main` may be missing).
 fn java_verify(

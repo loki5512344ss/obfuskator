@@ -103,3 +103,59 @@ fn package_private_overrides_stay_consistent_without_public_rename() {
         "families off must keep the chain untouched, got {names:?}"
     );
 }
+
+/// `demo/Iter` implements the external `java/util/Iterator`; `demo/Use` calls
+/// `invokeinterface Iterator.hasNext`. The `(hasNext, ()Z)` family must keep
+/// its original name: renaming it splits dispatch through the JDK interface
+/// (the JVM then fails with `AbstractMethodError ... is abstract`, real case:
+/// shaded gson's `LinkedTreeMap$EntrySet$1` iterator reached from
+/// `Map.forEach`).
+fn external_iterator_sample() -> Program {
+    let iter = ClassBuilder::new("demo/Iter", Some("java/lang/Object"))
+        .version(Version::JAVA_21)
+        .interface("java/util/Iterator")
+        .method_with_code(0x0001, "hasNext", "()Z", check_code())
+        .build();
+    let use_code = Code {
+        max_stack: 1,
+        max_locals: 1,
+        insns: vec![
+            Insn::AconstNull,
+            Insn::Invoke {
+                kind: noxis_classfile::InvokeKind::Interface,
+                owner: "java/util/Iterator".to_string(),
+                name: "hasNext".to_string(),
+                descriptor: "()Z".to_string(),
+                itf: true,
+            },
+            Insn::Return(Some(Prim::Int)),
+        ],
+        exception_table: Vec::new(),
+        frames: Vec::new(),
+        attributes: Vec::new(),
+    };
+    let use_class = ClassBuilder::new("demo/Use", Some("java/lang/Object"))
+        .version(Version::JAVA_21)
+        .method_with_code(0x0001, "use", "()Z", use_code)
+        .build();
+    Program {
+        classes: vec![iter, use_class],
+        resources: Vec::new(),
+    }
+}
+
+#[test]
+fn externally_dispatched_interface_method_keeps_its_name() {
+    let mut program = external_iterator_sample();
+    run(&mut program, true);
+
+    let kept = program.classes.iter().any(|c| {
+        c.methods
+            .iter()
+            .any(|m| m.name == "hasNext" && m.descriptor == "()Z")
+    });
+    assert!(
+        kept,
+        "hasNext implements java/util/Iterator and must not be renamed"
+    );
+}

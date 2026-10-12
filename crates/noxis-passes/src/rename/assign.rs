@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use noxis_analysis::{Analysis, ClassHierarchy};
+use noxis_analysis::{Analysis, ClassHierarchy, external_dispatch_families};
 use noxis_classfile::Program;
 use noxis_core::{Config, Context, NameStyle, Rng};
 
@@ -97,6 +97,7 @@ impl RenameMaps {
 pub(super) fn build_virtual_families(
     program: &Program,
     analysis: &Analysis,
+    hierarchy: &ClassHierarchy,
 ) -> (BTreeMap<FamilyKey, Vec<MemberKey>>, BTreeSet<FamilyKey>) {
     let mut families: BTreeMap<FamilyKey, Vec<MemberKey>> = BTreeMap::new();
     let mut locked: BTreeSet<FamilyKey> = BTreeSet::new();
@@ -124,6 +125,11 @@ pub(super) fn build_virtual_families(
             ));
         }
     }
+
+    // Семейства, которые диспатчатся через внешние интерфейсы/классы, обязаны
+    // сохранить имя: внешний вызывающий код не переименовать.
+    locked.extend(external_dispatch_families(program, hierarchy));
+
     (families, locked)
 }
 

@@ -1,9 +1,7 @@
-//! Mixin keep: classes listed in `*.mixins.json` (and the plugin) stay.
+//! Mixin keep: classes listed in `*.mixins.json` are now renameable.
 //!
-//! The Mixin framework resolves mixin classes and their members by name at
-//! runtime, so renaming them breaks the mod at startup. Entries use simple
-//! names relative to the `package` field, which generic text patching can
-//! never see - locking is the only sound answer.
+//! The resources pass patches mixins.json (rewrites package + entries),
+//! so mixin classes can be renamed. Reference: OBF fabric-obfuscator.
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
@@ -56,20 +54,20 @@ fn sample() -> Program {
 }
 
 #[test]
-fn mixin_classes_and_plugin_stay() {
+fn mixin_classes_are_renameable() {
     let program = sample();
     let analysis = Analysis::run(&program, &Config::default()).expect("analysis");
 
-    for kept in [
+    // Mixin classes are no longer locked - resources pass patches the config.
+    for renameable in [
         "demo/mixin/TargetMixin",
         "demo/mixin/other/Helper",
         "demo/mixin/ClientMixin",
         "demo/mixin/Plugin",
     ] {
-        assert!(analysis.is_locked(kept), "{kept} must survive renaming");
+        assert!(
+            !analysis.is_locked(renameable),
+            "{renameable} should be renameable now"
+        );
     }
-    assert!(
-        !analysis.is_locked("demo/App"),
-        "ordinary classes must still rename"
-    );
 }

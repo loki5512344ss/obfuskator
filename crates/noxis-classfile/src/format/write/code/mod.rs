@@ -23,7 +23,14 @@ use crate::model::{Attribute, Code, ExceptionHandler};
 use frames::convert_frames;
 
 /// Method body → a ready `Code` attribute (with logical instruction numbers).
-pub(super) fn convert_code(code: &Code, pool: &mut Pool) -> Result<RtAttr, ClassfileError> {
+///
+/// `emit_frames` is false for class-file versions below 50 (Java 6): those use
+/// the type-inference verifier and must not carry a `StackMapTable`.
+pub(super) fn convert_code(
+    code: &Code,
+    pool: &mut Pool,
+    emit_frames: bool,
+) -> Result<RtAttr, ClassfileError> {
     let (labels, bare) = split_marks(&code.insns)?;
     let resolve = |label: Label| -> Result<u32, ClassfileError> {
         labels
@@ -55,7 +62,11 @@ pub(super) fn convert_code(code: &Code, pool: &mut Pool) -> Result<RtAttr, Class
         resolve: &resolve,
         byte_of: &byte_of,
     };
-    let frames = convert_frames(&code.frames, pool, &byte_of)?;
+    let frames = if emit_frames {
+        convert_frames(&code.frames, pool, &byte_of)?
+    } else {
+        Vec::new()
+    };
     let mut attributes = Vec::with_capacity(code.attributes.len() + 1);
     for attr in &code.attributes {
         attributes.push(match attr {
@@ -68,7 +79,7 @@ pub(super) fn convert_code(code: &Code, pool: &mut Pool) -> Result<RtAttr, Class
             other => attrs::convert(other, pool)?,
         });
     }
-    if !frames.is_empty() {
+    if emit_frames && !frames.is_empty() {
         attributes.push(RtAttr::StackMapTable {
             name_index: pool.utf8("StackMapTable")?,
             frames,

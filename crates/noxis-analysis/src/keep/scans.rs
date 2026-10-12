@@ -38,6 +38,11 @@ impl KeepRules {
     /// renaming entirely), which the `@Accessor`/`@Invoker`/`@Overwrite`
     /// lookups need. Mixins configs are found two ways: any resource ending
     /// in `mixins.json`, plus whatever `fabric.mod.json` lists.
+    ///
+    /// DISABLED: the resources pass now patches mixins.json properly
+    /// (rewrites package + entries via common prefix), so mixin classes
+    /// can be renamed like any other class. Reference: OBF fabric-obfuscator.
+    #[allow(dead_code)]
     pub fn absorb_mixins(&mut self, program: &Program) {
         let mut listed: Vec<String> = Vec::new();
         for resource in &program.resources {

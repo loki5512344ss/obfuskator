@@ -14,11 +14,15 @@
 #[cfg(test)]
 mod tests;
 
+mod mixins;
+
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
 
 use noxis_classfile::Program;
 use noxis_core::{Context, CoreError, Pass, PassId, PassReport};
+
+pub use mixins::{patch_mixins_json, patch_refmap_json};
 
 /// Расширения текстовых ресурсов, которые имеют смысл переписывать.
 const TEXT_EXTS: [&str; 9] = [
@@ -68,7 +72,14 @@ impl Pass for ResourcesPass {
                 skipped += 1;
                 continue;
             };
-            let updated = remap_text(text, &map);
+            let lower = resource.path.to_ascii_lowercase();
+            let updated = if lower.ends_with(".mixins.json") || lower.ends_with("mixins.json") {
+                patch_mixins_json(text, &map).unwrap_or_else(|| remap_text(text, &map))
+            } else if lower.ends_with("refmap.json") {
+                patch_refmap_json(text, &map).unwrap_or_else(|| remap_text(text, &map))
+            } else {
+                remap_text(text, &map)
+            };
             if updated == text {
                 skipped += 1;
                 continue;

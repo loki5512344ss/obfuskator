@@ -356,6 +356,7 @@ dependencies = [
  "noxis-core",
  "noxis-runtime",
  "noxis-structure-check",
+ "serde_json",
  "thiserror",
  "tracing",
 ]

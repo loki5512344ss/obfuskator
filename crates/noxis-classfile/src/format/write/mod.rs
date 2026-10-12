@@ -22,6 +22,11 @@ pub(crate) fn write_class(class: &ClassFile) -> Result<Vec<u8>, ClassfileError> 
     let mut pool = pool::Pool::new();
     let version = RtVersion::from(class.version.major, class.version.minor)
         .map_err(|e| ClassfileError::Write(e.to_string()))?;
+    // `StackMapTable` is only legal from class-file version 50 (Java 6). Older
+    // classes use the type-inference verifier; emitting the attribute makes
+    // ASM/Paper reject the file ("Class versions V1_5 or less must use
+    // F_NEW frames"). Real case: the string-decoder is built at major 49.
+    let emit_frames = class.version.major >= 50;
     let this_class = pool.class(&class.this_class)?;
     let super_class = match &class.super_class {
         None => 0,
@@ -37,7 +42,7 @@ pub(crate) fn write_class(class: &ClassFile) -> Result<Vec<u8>, ClassfileError> 
     }
     let mut methods = Vec::with_capacity(class.methods.len());
     for method in &class.methods {
-        methods.push(convert_method(method, &mut pool)?);
+        methods.push(convert_method(method, &mut pool, emit_frames)?);
     }
     let mut attributes = Vec::with_capacity(class.attributes.len());
     for attr in &class.attributes {
@@ -78,13 +83,17 @@ fn convert_field(field: &Field, pool: &mut pool::Pool) -> Result<RtField, Classf
     })
 }
 
-fn convert_method(method: &Method, pool: &mut pool::Pool) -> Result<RtMethod, ClassfileError> {
+fn convert_method(
+    method: &Method,
+    pool: &mut pool::Pool,
+    emit_frames: bool,
+) -> Result<RtMethod, ClassfileError> {
     let mut attributes = Vec::with_capacity(method.attributes.len() + 1);
     for attr in &method.attributes {
         attributes.push(attrs::convert(attr, pool)?);
     }
     if let Some(code) = &method.code {
-        attributes.push(code::convert_code(code, pool)?);
+        attributes.push(code::convert_code(code, pool, emit_frames)?);
     }
     Ok(RtMethod {
         access_flags: MethodAccessFlags::from_bits_truncate(method.access_flags),

@@ -5,7 +5,7 @@
 use noxis_classfile::{Program, Resource};
 use noxis_core::{Config, Context, Pass};
 
-use super::{ResourcesPass, is_text, remap_text};
+use super::{ResourcesPass, is_text, patch_mixins_json, patch_refmap_json, remap_text};
 
 fn mapping() -> std::collections::BTreeMap<String, String> {
     let mut map = std::collections::BTreeMap::new();
@@ -157,4 +157,79 @@ fn pass_is_a_noop_without_a_mapping() {
         !report.notes.is_empty(),
         "должна быть заметка о пустом маппинге"
     );
+}
+
+fn mixin_mapping() -> std::collections::BTreeMap<String, String> {
+    let mut map = std::collections::BTreeMap::new();
+    map.insert("dev/loki/mixins/MixinA".into(), "xYz/abc/MixinA".into());
+    map.insert("dev/loki/mixins/MixinB".into(), "xYz/abc/MixinB".into());
+    map.insert("dev/loki/mixins/Plugin".into(), "xYz/abc/Plugin".into());
+    map
+}
+
+#[test]
+fn patch_mixins_json_rewrites_package_and_entries() {
+    let json = r#"{
+        "package": "dev.loki.mixins",
+        "plugin": "dev.loki.mixins.Plugin",
+        "mixins": ["MixinA", "MixinB"]
+    }"#;
+    let patched = patch_mixins_json(json, &mixin_mapping()).expect("patch");
+    assert!(
+        patched.contains("\"package\": \"xYz.abc\""),
+        "got: {patched}"
+    );
+    assert!(patched.contains("\"MixinA\""), "got: {patched}");
+    assert!(patched.contains("\"xYz.abc.Plugin\""), "got: {patched}");
+}
+
+#[test]
+fn patch_mixins_json_handles_empty_package() {
+    let json = r#"{"mixins": ["a.b.MixinA"]}"#;
+    let mut map = std::collections::BTreeMap::new();
+    map.insert("a/b/MixinA".into(), "x/M".into());
+    let patched = patch_mixins_json(json, &map).expect("patch");
+    assert!(patched.contains("\"M\""), "got: {patched}");
+}
+
+#[test]
+fn patch_refmap_json_rewrites_strings() {
+    let json = r#"{
+        "mappings": {
+            "dev/loki/mixins/MixinA": {"method_1234": "a/b/Target"}
+        },
+        "data": {"dev/loki/mixins/MixinA": {"method_1234": "field_5678"}}
+    }"#;
+    let mut map = std::collections::BTreeMap::new();
+    map.insert("a/b/Target".into(), "c/D".into());
+    let patched = patch_refmap_json(json, &map).expect("patch");
+    assert!(patched.contains("c/D"), "got: {patched}");
+}
+
+#[test]
+fn pass_patches_mixins_json_via_specialized_patcher() {
+    let mut program = Program {
+        classes: Vec::new(),
+        resources: vec![Resource {
+            path: "lovisual.mixins.json".into(),
+            data: br#"{
+                "package": "dev.loki.mixins",
+                "mixins": ["MixinA"]
+            }"#
+            .to_vec(),
+        }],
+    };
+
+    let mut ctx = Context::new(Config::default());
+    ctx.mapping
+        .classes
+        .insert("dev/loki/mixins/MixinA".into(), "xYz/abc/MixinA".into());
+
+    let report = ResourcesPass
+        .apply(&mut ctx, &mut program)
+        .expect("resources");
+
+    assert_eq!(report.transformed, 1);
+    let text = String::from_utf8(program.resources[0].data.clone()).unwrap();
+    assert!(text.contains("\"package\": \"xYz.abc\""), "got: {text}");
 }

@@ -64,7 +64,7 @@ impl Pass for RenamePass {
         // rename splits the override chain (the JVM then fails dispatch
         // with AbstractMethodError, real case: shaded gson's package-private
         // `ReflectionHelper$RecordHelper.isRecord` chain).
-        let (families, locked_families) = build_virtual_families(program, &analysis);
+        let (families, locked_families) = build_virtual_families(program, &analysis, &hierarchy);
 
         // 1. Class names.
         {

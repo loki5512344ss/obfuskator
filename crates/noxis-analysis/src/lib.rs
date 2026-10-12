@@ -16,4 +16,4 @@ pub mod keep;
 pub use entrypoints::Entrypoints;
 pub use hierarchy::{ClassHierarchy, RenameSafety, method_rename_safety};
 pub use jdk::JdkHierarchy;
-pub use keep::{Analysis, KeepRules, RuleError};
+pub use keep::{Analysis, KeepRules, RuleError, external_dispatch_families};

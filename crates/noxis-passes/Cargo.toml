@@ -11,6 +11,7 @@ noxis-analysis = { workspace = true }
 noxis-classfile = { workspace = true }
 noxis-core = { workspace = true }
 noxis-runtime = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
