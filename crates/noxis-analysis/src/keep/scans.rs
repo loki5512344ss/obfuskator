@@ -1,31 +1,8 @@
 //! Program scans feeding keep rules: bootstrap methods, databind literals, mixins.
 
-use noxis_classfile::{Attribute, Const, Insn, Method, Program};
+use noxis_classfile::{Attribute, Const, Insn, Program};
 
 use super::KeepRules;
-
-/// Whether an invoke reaches reflective method lookup or invocation.
-fn is_reflective_dispatch(owner: &str, name: &str) -> bool {
-    matches!(
-        (owner, name),
-        ("java/lang/Class", "getDeclaredMethod")
-            | ("java/lang/Class", "getMethod")
-            | ("java/lang/reflect/Method", "invoke")
-    )
-}
-
-/// The package prefix (`com/foo/bar`) of an internal class name.
-fn package_of(internal_name: &str) -> &str {
-    match internal_name.rfind('/') {
-        Some(index) => &internal_name[..index],
-        None => "",
-    }
-}
-
-/// Whether this method is `public abstract` (a `TypeAdapter`-style hook).
-fn is_public_abstract(method: &Method) -> bool {
-    method.access_flags & 0x0401 == 0x0401
-}
 
 impl KeepRules {
     /// Methods referenced by `BootstrapMethods` (`invokedynamic`).
@@ -81,53 +58,6 @@ impl KeepRules {
                 for class in mixin_classes(text) {
                     if program.class(&class).is_some() {
                         self.keep_exact(class);
-                    }
-                }
-            }
-        }
-    }
-
-    /// Lock shaded reflective libraries: a package holding both a
-    /// `public abstract` class (the `TypeAdapter`-style hook) and another
-    /// class that looks up or invokes methods reflectively (`getDeclaredMethod`,
-    /// `getMethod`, `Method.invoke`). Gson/Jackson/Moshi dispatch their adapter
-    /// methods through reflection, so renaming an abstract `read`/`write`
-    /// while the wrapper still calls it reflectively yields
-    /// `AbstractMethodError` at runtime. Package-locking the whole subtree is
-    /// the only sound answer - a member-level rule cannot see the reflective
-    /// call site on a renamed adapter.
-    pub fn absorb_shaded(&mut self, program: &Program) {
-        use std::collections::BTreeMap;
-        let mut packages: BTreeMap<String, Vec<&noxis_classfile::ClassFile>> = BTreeMap::new();
-        for class in &program.classes {
-            let package = package_of(&class.this_class);
-            packages.entry(package.to_string()).or_default().push(class);
-        }
-        for (package, classes) in &packages {
-            if package.is_empty() {
-                continue;
-            }
-            let has_abstract = classes
-                .iter()
-                .any(|class| class.methods.iter().any(is_public_abstract));
-            let has_reflective = classes.iter().any(|class| {
-                class.methods.iter().any(|method| {
-                    method.code.as_ref().is_some_and(|code| {
-                        code.insns.iter().any(|insn| {
-                            matches!(insn, Insn::Invoke { owner, name, .. }
-                                if is_reflective_dispatch(owner.as_str(), name.as_str()))
-                        })
-                    })
-                })
-            });
-            if !(has_abstract && has_reflective) {
-                continue;
-            }
-            for class in classes {
-                self.keep_exact(class.this_class.clone());
-                for method in &class.methods {
-                    if is_public_abstract(method) {
-                        self.keep_member(method.name.clone());
                     }
                 }
             }

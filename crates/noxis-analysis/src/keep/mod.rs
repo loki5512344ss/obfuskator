@@ -166,7 +166,6 @@ impl Analysis {
         keep.absorb_bootstrap(program);
         keep.absorb_databind(program);
         keep.absorb_mixins(program);
-        keep.absorb_shaded(program);
 
         let locked_classes = program
             .classes
