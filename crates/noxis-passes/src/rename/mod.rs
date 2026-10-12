@@ -23,7 +23,8 @@ use noxis_classfile::Program;
 use noxis_core::{Context, CoreError, Pass, PassId, PassReport, field_key, method_key};
 
 use self::assign::{
-    RenameMaps, generate_packages, parent_package, rename_virtual_families, simple_name, widen_all,
+    RenameMaps, build_virtual_families, generate_packages, params_of, parent_package,
+    rename_virtual_families, simple_name, widen_all,
 };
 use self::rewrite::rewrite_class;
 use crate::namegen::NameGenerator;
@@ -57,6 +58,13 @@ impl Pass for RenamePass {
 
         let mut maps = RenameMaps::default();
         let mut renamed_classes = 0usize;
+
+        // Family membership up front: step 2 must not rename a method that
+        // belongs to a shared or locked family on its own - a per-class
+        // rename splits the override chain (the JVM then fails dispatch
+        // with AbstractMethodError, real case: shaded gson's package-private
+        // `ReflectionHelper$RecordHelper.isRecord` chain).
+        let (families, locked_families) = build_virtual_families(program, &analysis);
 
         // 1. Class names.
         {
@@ -116,6 +124,35 @@ impl Pass for RenamePass {
                     if analysis.keep.keeps_member(&method.name) {
                         method_names.reserve(method.name.clone());
                         continue;
+                    }
+                    // A method shared with another class must not get its
+                    // name here: the family pass assigns one common name
+                    // (aggressive mode), or the whole family keeps the
+                    // original when it is locked. A per-class rename splits
+                    // the override chain - the JVM then fails dispatch with
+                    // `AbstractMethodError` (real case: shaded gson's
+                    // package-private `ReflectionHelper$RecordHelper.isRecord`
+                    // chain, each class renamed apart).
+                    if let Some(params) = params_of(&method.descriptor) {
+                        let key = (method.name.clone(), params);
+                        if let Some(members) = families.get(&key) {
+                            let hierarchy_related = members.iter().any(|(other, _, _)| {
+                                other != &owner
+                                    && (hierarchy.is_subclass_of(other, &owner)
+                                        || hierarchy.is_subclass_of(&owner, other))
+                            });
+                            // Aggressive mode renames every shared family
+                            // uniformly. Without it the family pass does not
+                            // run, so only hierarchy-related members must stay
+                            // together; unrelated same-name methods never meet
+                            // at dispatch and may rename individually.
+                            let shared = members.len() > 1
+                                && (cfg.rename.rename_public_members || hierarchy_related);
+                            if shared || locked_families.contains(&key) {
+                                method_names.reserve(method.name.clone());
+                                continue;
+                            }
+                        }
                     }
                     let safety = method_rename_safety(
                         program,
@@ -181,7 +218,8 @@ impl Pass for RenamePass {
 
         // 3. Virtual families - aggressive mode only.
         if cfg.rename.rename_public_members {
-            renamed_methods += rename_virtual_families(program, &analysis, &mut maps, &cfg, ctx);
+            renamed_methods +=
+                rename_virtual_families(families, locked_families, &mut maps, &cfg, ctx);
         }
 
         // 4. Aliases for subclasses.

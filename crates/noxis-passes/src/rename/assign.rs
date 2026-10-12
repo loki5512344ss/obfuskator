@@ -13,6 +13,9 @@ use crate::namegen::NameGenerator;
 /// `(owner, name, descriptor)` - matches a JVM reference.
 pub(super) type MemberKey = (String, String, String);
 
+/// `(method name, params)` - one virtual family.
+pub(super) type FamilyKey = (String, String);
+
 /// Rename maps for one run: `declared` is where a member was declared,
 /// `alias` is subclasses that inherit the name without declaring it themselves.
 #[derive(Debug, Default)]
@@ -85,19 +88,18 @@ impl RenameMaps {
     }
 }
 
-/// Rename virtual methods as a "family": one name for the whole hierarchy,
-/// including bridge methods with covariant returns.
-pub(super) fn rename_virtual_families(
+/// Family = (name, params): the return type is ignored, so covariant
+/// returns and bridge methods (`ACC_BRIDGE`) are captured together.
+///
+/// Also returns the families that must keep their original name: a locked
+/// class or a `keep_member` name in the family locks it for everybody -
+/// renaming only the other members would split the override chain.
+pub(super) fn build_virtual_families(
     program: &Program,
     analysis: &Analysis,
-    maps: &mut RenameMaps,
-    cfg: &Config,
-    ctx: &mut Context,
-) -> usize {
-    // Family = (name, params): the return type is ignored, so covariant
-    // returns and bridge methods (`ACC_BRIDGE`) are captured together.
-    let mut families: BTreeMap<(String, String), Vec<MemberKey>> = BTreeMap::new();
-    let mut locked_families: BTreeSet<(String, String)> = BTreeSet::new();
+) -> (BTreeMap<FamilyKey, Vec<MemberKey>>, BTreeSet<FamilyKey>) {
+    let mut families: BTreeMap<FamilyKey, Vec<MemberKey>> = BTreeMap::new();
+    let mut locked: BTreeSet<FamilyKey> = BTreeSet::new();
 
     for class in &program.classes {
         let locked_class = analysis.is_locked(&class.this_class);
@@ -113,7 +115,7 @@ pub(super) fn rename_virtual_families(
             };
             let family = (method.name.clone(), params);
             if locked_class || analysis.keep.keeps_member(&method.name) {
-                locked_families.insert(family.clone());
+                locked.insert(family.clone());
             }
             families.entry(family).or_default().push((
                 class.this_class.clone(),
@@ -122,7 +124,18 @@ pub(super) fn rename_virtual_families(
             ));
         }
     }
+    (families, locked)
+}
 
+/// Rename virtual methods as a "family": one name for the whole hierarchy,
+/// including bridge methods with covariant returns.
+pub(super) fn rename_virtual_families(
+    families: BTreeMap<(String, String), Vec<MemberKey>>,
+    locked_families: BTreeSet<FamilyKey>,
+    maps: &mut RenameMaps,
+    cfg: &Config,
+    ctx: &mut Context,
+) -> usize {
     let mut renamed = 0usize;
     let mut family_index = 0u64;
     for (family_key, members) in families {
@@ -150,7 +163,7 @@ pub(super) fn rename_virtual_families(
 }
 
 /// `(<params>)<ret>` → `(<params>)`, or `None` if the descriptor is malformed.
-fn params_of(descriptor: &str) -> Option<String> {
+pub(super) fn params_of(descriptor: &str) -> Option<String> {
     let close = descriptor.find(')')?;
     if !descriptor.starts_with('(') {
         return None;
