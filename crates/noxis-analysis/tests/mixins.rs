@@ -1,7 +1,20 @@
-//! Mixin keep: classes listed in `*.mixins.json` are now renameable.
+//! Mixin keep: classes listed in `*.mixins.json` are locked, not renamed.
 //!
-//! The resources pass patches mixins.json (rewrites package + entries),
-//! so mixin classes can be renamed. Reference: OBF fabric-obfuscator.
+//! Real-world proof (LoVisual, 2026-10-13): renaming mixin classes and
+//! patching the config breaks the mod at runtime. Two independent failures:
+//! 1. When obf packages are randomized per class, the config patcher writes
+//!    `package: ""`, and Fabric/Mixin then drops *every* mixin as "orphaned"
+//!    (`RenderPipelineMixin implements IRenderPipeline` never applies, so the
+//!    injected-interface cast fails with `ClassCastException`).
+//! 2. `IMixinConfigPlugin.shouldApplyMixin` compares the runtime mixin class
+//!    name against string literals (`Set.of("dev.loki...Mixin")`); renaming
+//!    the mixins desyncs those sets and optional mixins get applied when the
+//!    target mod is absent.
+//!
+//! So mixin classes and their plugin stay under their original names, and
+//! locking the class freezes its members too - which `@Accessor`/`@Invoker`/
+//! `@Overwrite` name lookups require. Other program classes still rename, and
+//! calls from locked mixin bytecode are rewritten consistently.
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
@@ -54,20 +67,27 @@ fn sample() -> Program {
 }
 
 #[test]
-fn mixin_classes_are_renameable() {
+fn mixin_classes_and_plugin_are_locked() {
     let program = sample();
     let analysis = Analysis::run(&program, &Config::default()).expect("analysis");
 
-    // Mixin classes are no longer locked - resources pass patches the config.
-    for renameable in [
+    // Mixin entry points and the config plugin are resolved by name at
+    // runtime and must keep their names (and, being locked, their members).
+    for locked in [
         "demo/mixin/TargetMixin",
         "demo/mixin/other/Helper",
         "demo/mixin/ClientMixin",
         "demo/mixin/Plugin",
     ] {
-        assert!(
-            !analysis.is_locked(renameable),
-            "{renameable} should be renameable now"
-        );
+        assert!(analysis.is_locked(locked), "{locked} should be locked");
     }
+}
+
+#[test]
+fn non_mixin_classes_stay_renameable() {
+    let program = sample();
+    let analysis = Analysis::run(&program, &Config::default()).expect("analysis");
+
+    // Plain program classes are not named by any mixin config.
+    assert!(!analysis.is_locked("demo/App"));
 }

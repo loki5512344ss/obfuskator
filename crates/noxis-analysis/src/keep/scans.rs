@@ -31,18 +31,19 @@ impl KeepRules {
     /// Lock every Mixin class (and the plugin) listed in the configs.
     ///
     /// The Mixin framework resolves mixin classes and their members by name
-    /// at runtime, so renaming them breaks the mod at startup. Entries use
-    /// simple names relative to the `package` field, which generic text
-    /// patching can never see - locking is the only sound answer. Locking
-    /// the class also freezes its members (locked classes skip member
-    /// renaming entirely), which the `@Accessor`/`@Invoker`/`@Overwrite`
-    /// lookups need. Mixins configs are found two ways: any resource ending
-    /// in `mixins.json`, plus whatever `fabric.mod.json` lists.
+    /// at runtime, so renaming them breaks the mod at startup. Locking the
+    /// class also freezes its members (locked classes skip member renaming
+    /// entirely), which the `@Accessor`/`@Invoker`/`@Overwrite` name lookups
+    /// and `IMixinConfigPlugin.shouldApplyMixin` string sets both need.
     ///
-    /// DISABLED: the resources pass now patches mixins.json properly
-    /// (rewrites package + entries via common prefix), so mixin classes
-    /// can be renamed like any other class. Reference: OBF fabric-obfuscator.
-    #[allow(dead_code)]
+    /// Renaming mixins and patching the config was tried and reverted: when
+    /// obfuscated packages are randomized per class the config patcher writes
+    /// an empty `package`, and Fabric/Mixin drops every mixin as "orphaned"
+    /// (real case: injected-interface cast fails with `ClassCastException`).
+    /// Entries use simple names relative to `package`, which generic text
+    /// patching can never see - locking is the only sound answer. Mixin
+    /// configs are found two ways: any resource ending in `mixins.json`,
+    /// plus whatever `fabric.mod.json` lists.
     pub fn absorb_mixins(&mut self, program: &Program) {
         let mut listed: Vec<String> = Vec::new();
         for resource in &program.resources {
