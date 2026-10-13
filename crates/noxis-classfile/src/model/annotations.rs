@@ -13,6 +13,19 @@ pub struct Annotation {
     pub elements: Vec<(String, AnnotationValue)>,
 }
 
+/// One `type_annotation` (JVMS §4.7.20): a type-use annotation on a
+/// method return type, a cast, a local variable, and so on.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeAnnotation {
+    /// `target_info` + `type_path` bytes (§4.7.20.1-2): no pool references
+    /// there at all, kept opaque so write copies them verbatim.
+    pub target: Vec<u8>,
+    /// The annotated type as a field descriptor (`type_index`).
+    pub descriptor: String,
+    /// `(element name, value)` pairs - same shape as [`Annotation`]'s.
+    pub elements: Vec<(String, AnnotationValue)>,
+}
+
 /// A single `element_value`: one variant per tag, so `B`/`C`/`S`/`Z`
 /// keep their identity (the pool stores them all as `CONSTANT_Integer`,
 /// but HotSpot checks the tag against the annotation member's type).

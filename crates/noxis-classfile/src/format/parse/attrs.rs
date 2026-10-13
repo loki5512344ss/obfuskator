@@ -9,8 +9,9 @@
 use ristretto_classfile::ConstantPool;
 use ristretto_classfile::attributes::Attribute as RtAttr;
 
+use super::annos::{annos, element_value, params, type_annos};
 use super::pool::{
-    annotation, class_name, const_from, is_interface, kind_code, name_and_type, ref_parts, utf8,
+    class_name, const_from, is_interface, kind_code, name_and_type, ref_parts, utf8,
 };
 use crate::error::ClassfileError;
 use crate::model::{Attribute, BootstrapMethod, InnerClass, MethodParameter, RecordComponent};
@@ -108,51 +109,28 @@ pub(super) fn convert(attr: &RtAttr, pool: &ConstantPool<'_>) -> Result<Attribut
             ));
         }
         RtAttr::RuntimeVisibleAnnotations { annotations, .. } => {
-            Attribute::RuntimeVisibleAnnotations(
-                annotations
-                    .iter()
-                    .map(|anno| annotation(pool, anno))
-                    .collect::<Result<_, _>>()?,
-            )
+            Attribute::RuntimeVisibleAnnotations(annos(pool, annotations)?)
         }
         RtAttr::RuntimeInvisibleAnnotations { annotations, .. } => {
-            Attribute::RuntimeInvisibleAnnotations(
-                annotations
-                    .iter()
-                    .map(|anno| annotation(pool, anno))
-                    .collect::<Result<_, _>>()?,
-            )
+            Attribute::RuntimeInvisibleAnnotations(annos(pool, annotations)?)
         }
         RtAttr::RuntimeVisibleParameterAnnotations {
             parameter_annotations,
             ..
-        } => Attribute::RuntimeVisibleParameterAnnotations(
-            parameter_annotations
-                .iter()
-                .map(|param| {
-                    param
-                        .annotations
-                        .iter()
-                        .map(|anno| annotation(pool, anno))
-                        .collect::<Result<_, _>>()
-                })
-                .collect::<Result<_, _>>()?,
-        ),
+        } => Attribute::RuntimeVisibleParameterAnnotations(params(pool, parameter_annotations)?),
         RtAttr::RuntimeInvisibleParameterAnnotations {
             parameter_annotations,
             ..
-        } => Attribute::RuntimeInvisibleParameterAnnotations(
-            parameter_annotations
-                .iter()
-                .map(|param| {
-                    param
-                        .annotations
-                        .iter()
-                        .map(|anno| annotation(pool, anno))
-                        .collect::<Result<_, _>>()
-                })
-                .collect::<Result<_, _>>()?,
-        ),
+        } => Attribute::RuntimeInvisibleParameterAnnotations(params(pool, parameter_annotations)?),
+        RtAttr::RuntimeVisibleTypeAnnotations {
+            type_annotations, ..
+        } => Attribute::RuntimeVisibleTypeAnnotations(type_annos(pool, type_annotations)?),
+        RtAttr::RuntimeInvisibleTypeAnnotations {
+            type_annotations, ..
+        } => Attribute::RuntimeInvisibleTypeAnnotations(type_annos(pool, type_annotations)?),
+        RtAttr::AnnotationDefault { element, .. } => {
+            Attribute::AnnotationDefault(element_value(pool, element)?)
+        }
         other => raw(other)?,
     })
 }

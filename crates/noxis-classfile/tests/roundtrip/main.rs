@@ -170,3 +170,4 @@ fn round_trip(rt: &RtClass<'_>) -> ClassFile {
 /// instead of dying in the backend's strict verifier on write.
 mod attrs;
 mod code;
+mod type_annotations;

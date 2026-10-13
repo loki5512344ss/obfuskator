@@ -5,6 +5,7 @@
 //! is already split by responsibility so wiring is a single `mod parse` with no
 //! refactoring.
 
+pub(super) mod annos;
 pub(super) mod attrs;
 pub(super) mod class;
 pub(super) mod code;

@@ -2,12 +2,46 @@
 
 use ristretto_classfile::attributes::{
     Annotation as RtAnno, AnnotationElement as RtElem, AnnotationValuePair as RtPair,
+    ParameterAnnotation as RtParamAnno, TargetPath as RtPath, TargetType as RtTarget,
+    TypeAnnotation as RtTypeAnno,
 };
+use ristretto_classfile::byte_reader::ByteReader;
 
 use super::pool::Pool;
 use crate::error::ClassfileError;
 use crate::insn::Const;
-use crate::model::{Annotation, AnnotationValue};
+use crate::model::{Annotation, AnnotationValue, TypeAnnotation};
+/// The `annotations` list of a visible/invisible annotation attribute.
+pub(super) fn list(annos: &[Annotation], pool: &mut Pool) -> Result<Vec<RtAnno>, ClassfileError> {
+    annos.iter().map(|anno| annotation(anno, pool)).collect()
+}
+
+/// The per-parameter lists of a parameter-annotation attribute.
+pub(super) fn parameters(
+    params: &[Vec<Annotation>],
+    pool: &mut Pool,
+) -> Result<Vec<RtParamAnno>, ClassfileError> {
+    params
+        .iter()
+        .map(|param| {
+            Ok(RtParamAnno {
+                annotations: list(param, pool)?,
+            })
+        })
+        .collect()
+}
+
+/// The `type_annotations` list of a type-annotation attribute.
+pub(super) fn type_list(
+    annos: &[TypeAnnotation],
+    pool: &mut Pool,
+) -> Result<Vec<RtTypeAnno>, ClassfileError> {
+    annos
+        .iter()
+        .map(|anno| type_annotation(anno, pool))
+        .collect()
+}
+
 /// One IR annotation → backend structure (fresh pool indices).
 pub(super) fn annotation(anno: &Annotation, pool: &mut Pool) -> Result<RtAnno, ClassfileError> {
     Ok(RtAnno {
@@ -25,8 +59,45 @@ pub(super) fn annotation(anno: &Annotation, pool: &mut Pool) -> Result<RtAnno, C
     })
 }
 
+/// One IR type annotation → backend structure (fresh pool indices). The
+/// opaque `target` bytes (`target_info` + `type_path`) carry no pool
+/// references and are re-deserialized into backend structs verbatim.
+pub(super) fn type_annotation(
+    anno: &TypeAnnotation,
+    pool: &mut Pool,
+) -> Result<RtTypeAnno, ClassfileError> {
+    let mut reader = ByteReader::new(&anno.target);
+    let target_type = RtTarget::from_bytes(&mut reader)
+        .map_err(|e| ClassfileError::Write(format!("битый target_info: {e}")))?;
+    let path_len = reader
+        .read_u8()
+        .map_err(|e| ClassfileError::Write(format!("битый type_path: {e}")))?;
+    let mut type_path = Vec::with_capacity(path_len as usize);
+    for _ in 0..path_len {
+        type_path.push(
+            RtPath::from_bytes(&mut reader)
+                .map_err(|e| ClassfileError::Write(format!("битый type_path: {e}")))?,
+        );
+    }
+    Ok(RtTypeAnno {
+        target_type,
+        type_path,
+        type_index: pool.utf8(&anno.descriptor)?,
+        elements: anno
+            .elements
+            .iter()
+            .map(|(name, value)| {
+                Ok(RtPair {
+                    name_index: pool.utf8(name)?,
+                    value: element(value, pool)?,
+                })
+            })
+            .collect::<Result<_, ClassfileError>>()?,
+    })
+}
+
 /// One IR element value → backend structure, tag preserved.
-fn element(value: &AnnotationValue, pool: &mut Pool) -> Result<RtElem, ClassfileError> {
+pub(super) fn element(value: &AnnotationValue, pool: &mut Pool) -> Result<RtElem, ClassfileError> {
     fn int(v: i32, pool: &mut Pool) -> Result<u16, ClassfileError> {
         pool.constant(&Const::Int(v))
     }

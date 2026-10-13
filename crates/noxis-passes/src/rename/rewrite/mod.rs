@@ -2,9 +2,13 @@
 
 mod annotations;
 mod code;
+mod consts;
 
-use annotations::{rewrite_annotations, rewrite_parameter_annotations};
-use noxis_classfile::{Attribute, ClassFile, Const, StackMapFrame, VerificationType};
+use annotations::{
+    rewrite_annotations, rewrite_parameter_annotations, rewrite_type_annotations, rewrite_value,
+};
+use consts::{rewrite_const, rewrite_method_ref};
+use noxis_classfile::{Attribute, ClassFile, StackMapFrame, VerificationType};
 use noxis_core::{Config, Context};
 
 use super::assign::{RenameMaps, rewrite_descriptor};
@@ -151,6 +155,11 @@ fn rewrite_attributes(
             | Attribute::RuntimeInvisibleParameterAnnotations(params) => {
                 rewrite_parameter_annotations(params, maps);
             }
+            Attribute::RuntimeVisibleTypeAnnotations(annos)
+            | Attribute::RuntimeInvisibleTypeAnnotations(annos) => {
+                rewrite_type_annotations(annos, maps);
+            }
+            Attribute::AnnotationDefault(value) => rewrite_value(value, maps),
             Attribute::BootstrapMethods(methods) => {
                 for bsm in methods.iter_mut() {
                     rewrite_method_ref(&mut bsm.owner, &mut bsm.name, &mut bsm.descriptor, maps);
@@ -187,59 +196,6 @@ fn rewrite_attributes(
             }
             _ => {}
         }
-    }
-}
-
-/// A method reference (invoke/bootstrap/method-handle): the owner follows
-/// class renames, the name follows member renames, the descriptor is
-/// rewritten. Array owners (`[Lpkg/C;` - e.g. `clone` on arrays) name the
-/// element class inside a descriptor, so they take the descriptor path.
-fn rewrite_method_ref(
-    owner: &mut String,
-    name: &mut String,
-    descriptor: &mut String,
-    maps: &RenameMaps,
-) {
-    if owner.starts_with('[') {
-        *owner = rewrite_descriptor(owner, &maps.classes);
-    } else {
-        if let Some(new_name) = maps.method(owner, name, descriptor) {
-            *name = new_name;
-        }
-        if let Some(mapped) = maps.classes.get(owner.as_str()) {
-            *owner = mapped.clone();
-        }
-    }
-    *descriptor = rewrite_descriptor(descriptor, &maps.classes);
-}
-
-/// A constant-pool reference inside code or bootstrap arguments: class
-/// literals (plain or array), method types, method handles, condy payloads.
-/// Anything else (numbers, strings) has no references to follow.
-fn rewrite_const(value: &mut Const, maps: &RenameMaps) {
-    match value {
-        Const::Class(name) => {
-            if name.starts_with('[') {
-                *name = rewrite_descriptor(name, &maps.classes);
-            } else if let Some(mapped) = maps.classes.get(name.as_str()) {
-                *name = mapped.clone();
-            }
-        }
-        Const::MethodType(descriptor) => {
-            *descriptor = rewrite_descriptor(descriptor, &maps.classes);
-        }
-        Const::MethodHandle {
-            owner,
-            name,
-            descriptor,
-            ..
-        } => {
-            rewrite_method_ref(owner, name, descriptor, maps);
-        }
-        Const::Dynamic { descriptor, .. } => {
-            *descriptor = rewrite_descriptor(descriptor, &maps.classes);
-        }
-        _ => {}
     }
 }
 

@@ -8,7 +8,7 @@ use ristretto_classfile::attributes::{
     LocalVariableTypeTable as RtLocalType, Record as RtRecord,
 };
 
-use super::annotations::annotation;
+use super::annotations;
 use super::helpers;
 use super::pool::Pool;
 use crate::error::ClassfileError;
@@ -181,50 +181,38 @@ pub(super) fn convert(attr: &Attribute, pool: &mut Pool) -> Result<RtAttr, Class
         },
         Attribute::RuntimeVisibleAnnotations(annos) => RtAttr::RuntimeVisibleAnnotations {
             name_index: pool.utf8("RuntimeVisibleAnnotations")?,
-            annotations: annos
-                .iter()
-                .map(|anno| annotation(anno, pool))
-                .collect::<Result<_, _>>()?,
+            annotations: annotations::list(annos, pool)?,
         },
         Attribute::RuntimeInvisibleAnnotations(annos) => RtAttr::RuntimeInvisibleAnnotations {
             name_index: pool.utf8("RuntimeInvisibleAnnotations")?,
-            annotations: annos
-                .iter()
-                .map(|anno| annotation(anno, pool))
-                .collect::<Result<_, _>>()?,
+            annotations: annotations::list(annos, pool)?,
         },
         Attribute::RuntimeVisibleParameterAnnotations(params) => {
             RtAttr::RuntimeVisibleParameterAnnotations {
                 name_index: pool.utf8("RuntimeVisibleParameterAnnotations")?,
-                parameter_annotations: params
-                    .iter()
-                    .map(|param| {
-                        Ok(ristretto_classfile::attributes::ParameterAnnotation {
-                            annotations: param
-                                .iter()
-                                .map(|anno| annotation(anno, pool))
-                                .collect::<Result<_, _>>()?,
-                        })
-                    })
-                    .collect::<Result<_, _>>()?,
+                parameter_annotations: annotations::parameters(params, pool)?,
             }
         }
         Attribute::RuntimeInvisibleParameterAnnotations(params) => {
             RtAttr::RuntimeInvisibleParameterAnnotations {
                 name_index: pool.utf8("RuntimeInvisibleParameterAnnotations")?,
-                parameter_annotations: params
-                    .iter()
-                    .map(|param| {
-                        Ok(ristretto_classfile::attributes::ParameterAnnotation {
-                            annotations: param
-                                .iter()
-                                .map(|anno| annotation(anno, pool))
-                                .collect::<Result<_, _>>()?,
-                        })
-                    })
-                    .collect::<Result<_, _>>()?,
+                parameter_annotations: annotations::parameters(params, pool)?,
             }
         }
+        Attribute::RuntimeVisibleTypeAnnotations(annos) => RtAttr::RuntimeVisibleTypeAnnotations {
+            name_index: pool.utf8("RuntimeVisibleTypeAnnotations")?,
+            type_annotations: annotations::type_list(annos, pool)?,
+        },
+        Attribute::RuntimeInvisibleTypeAnnotations(annos) => {
+            RtAttr::RuntimeInvisibleTypeAnnotations {
+                name_index: pool.utf8("RuntimeInvisibleTypeAnnotations")?,
+                type_annotations: annotations::type_list(annos, pool)?,
+            }
+        }
+        Attribute::AnnotationDefault(value) => RtAttr::AnnotationDefault {
+            name_index: pool.utf8("AnnotationDefault")?,
+            element: annotations::element(value, pool)?,
+        },
         Attribute::Raw { name, data } => RtAttr::Unknown {
             name_index: pool.utf8(name)?,
             info: data.clone(),

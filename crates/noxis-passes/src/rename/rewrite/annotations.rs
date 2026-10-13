@@ -1,7 +1,7 @@
 //! Annotation rewriting: class descriptors follow the mapping, string
 //! values are data and stay put.
 
-use noxis_classfile::{Annotation, AnnotationValue};
+use noxis_classfile::{Annotation, AnnotationValue, TypeAnnotation};
 
 use super::super::assign::{RenameMaps, rewrite_descriptor};
 
@@ -19,6 +19,18 @@ pub(super) fn rewrite_parameter_annotations(params: &mut [Vec<Annotation>], maps
     }
 }
 
+/// Type-use annotations (`RuntimeVisibleTypeAnnotations` and friends):
+/// the annotated type descriptor follows the mapping, the opaque
+/// `target_info`/`type_path` bytes carry no pool references at all.
+pub(super) fn rewrite_type_annotations(annos: &mut [TypeAnnotation], maps: &RenameMaps) {
+    for anno in annos.iter_mut() {
+        anno.descriptor = rewrite_descriptor(&anno.descriptor, &maps.classes);
+        for (_, value) in anno.elements.iter_mut() {
+            rewrite_value(value, maps);
+        }
+    }
+}
+
 fn rewrite_annotation(anno: &mut Annotation, maps: &RenameMaps) {
     anno.descriptor = rewrite_descriptor(&anno.descriptor, &maps.classes);
     for (_, value) in anno.elements.iter_mut() {
@@ -26,7 +38,7 @@ fn rewrite_annotation(anno: &mut Annotation, maps: &RenameMaps) {
     }
 }
 
-fn rewrite_value(value: &mut AnnotationValue, maps: &RenameMaps) {
+pub(super) fn rewrite_value(value: &mut AnnotationValue, maps: &RenameMaps) {
     match value {
         // The `'e'` tag: enum type descriptor moves, the constant name does not.
         AnnotationValue::Enum { descriptor, .. } => {

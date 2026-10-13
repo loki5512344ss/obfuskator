@@ -4,7 +4,7 @@ pub mod annotations;
 pub mod builder;
 pub mod version;
 
-pub use annotations::{Annotation, AnnotationValue};
+pub use annotations::{Annotation, AnnotationValue, TypeAnnotation};
 pub use version::Version;
 
 use crate::format::StackMapFrame;
@@ -54,6 +54,15 @@ pub enum Attribute {
     RuntimeVisibleParameterAnnotations(Vec<Vec<Annotation>>),
     /// `RuntimeInvisibleParameterAnnotations` (JVMS §4.7.19).
     RuntimeInvisibleParameterAnnotations(Vec<Vec<Annotation>>),
+    /// `RuntimeVisibleTypeAnnotations` (JVMS §4.7.20): type-use
+    /// annotations. Parsed - raw pool indices go stale on write and ASM
+    /// dies with `ArrayIndexOutOfBoundsException` reading them back.
+    RuntimeVisibleTypeAnnotations(Vec<TypeAnnotation>),
+    /// `RuntimeInvisibleTypeAnnotations` (JVMS §4.7.21).
+    RuntimeInvisibleTypeAnnotations(Vec<TypeAnnotation>),
+    /// `AnnotationDefault` (JVMS §4.7.22): the default value of one
+    /// annotation member - a single `element_value` with pool references.
+    AnnotationDefault(AnnotationValue),
     /// Everything else: name + raw `info` bytes (careful with pool indices).
     Raw {
         name: String,
