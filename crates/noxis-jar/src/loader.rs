@@ -24,7 +24,7 @@ pub fn load(entries: Vec<Entry>) -> Result<Program, JarError> {
     let mut seen: BTreeSet<String> = BTreeSet::new();
 
     for entry in entries {
-        if is_class_entry(&entry.name) {
+        if is_class_entry(&entry.name) && !is_module_info(&entry.name) {
             let class = format::parse(&entry.data)?;
             if seen.insert(class.this_class.clone()) {
                 program.classes.push(class);
@@ -64,6 +64,14 @@ pub fn save(program: &Program) -> Result<Vec<Entry>, JarError> {
 /// A class file inside the archive: the path ends in `.class`.
 fn is_class_entry(name: &str) -> bool {
     name.len() > ".class".len() && name.ends_with(".class")
+}
+
+/// A JPMS descriptor. No class loader ever loads it; parsing would rebuild
+/// its pool and leave the unmodeled `Module` attribute with stale indices
+/// (ASM then dies in `readModule`), so it travels as a raw resource with
+/// its bytes intact.
+fn is_module_info(name: &str) -> bool {
+    name.ends_with("module-info.class")
 }
 
 #[cfg(test)]
@@ -131,5 +139,24 @@ mod tests {
         let program = load(entries).expect("load");
         assert_eq!(program.classes.len(), 1);
         assert_eq!(program.classes[0].this_class, "demo/App");
+    }
+
+    /// JPMS descriptors are never class-loaded: they pass through as raw
+    /// resources (parsing would rebuild their pool and stale the `Module`
+    /// attribute, which stays unmodeled).
+    #[test]
+    fn module_info_passes_through_as_resource() {
+        let entries = vec![
+            Entry::new("META-INF/versions/9/module-info.class", vec![0xCA, 0xFE]),
+            Entry::new("notes.txt", b"hi".to_vec()),
+        ];
+
+        let program = load(entries).expect("load");
+        assert!(program.classes.is_empty());
+        assert_eq!(program.resources.len(), 2);
+        assert_eq!(
+            program.resources[0].path,
+            "META-INF/versions/9/module-info.class"
+        );
     }
 }
