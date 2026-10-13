@@ -124,7 +124,8 @@ impl Default for FlowConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct ConstantsConfig {
-    /// Splitting schemes (`xor`, `add`, `shift`), picked by RNG per constant.
+    /// Splitting schemes (`xor`, `add`, `shift`, `mba`), picked by RNG per
+    /// constant.
     pub schemes: Vec<String>,
     /// Insert opaque predicates (at most this many per method).
     pub max_predicates: usize,
@@ -135,7 +136,12 @@ pub struct ConstantsConfig {
 impl Default for ConstantsConfig {
     fn default() -> Self {
         Self {
-            schemes: vec!["xor".to_string(), "add".to_string(), "shift".to_string()],
+            schemes: vec![
+                "xor".to_string(),
+                "add".to_string(),
+                "shift".to_string(),
+                "mba".to_string(),
+            ],
             max_predicates: 1,
             skip: Vec::new(),
         }

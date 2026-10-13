@@ -1,8 +1,16 @@
 //! Constant-splitting schemes and opaque predicates.
 //!
 //! Integer constants outside the `iconst` range are replaced by triples
-//! (`x^k`, `a+b`, shift); an opaque predicate is an always-true condition with
-//! a one-`nop` dead branch (valid, never executed, breaks linear disassembly).
+//! (`x^k`, `a+b`, shift) or the `mba` form below; an opaque predicate is an
+//! always-true condition with a one-`nop` dead branch (valid, never
+//! executed, breaks linear disassembly).
+//!
+//! None of this survives a real constant-propagation pass (every operand is
+//! a literal, so a general evaluator folds the whole expression regardless
+//! of depth) - that is a known, documented limit, not a claim otherwise.
+//! `mba` raises the bar against a *pattern* matcher instead: `xor`/`add`
+//! hardcode one opcode triple as "this is a split constant", `mba` needs the
+//! `(a&b)+(a|b) = a+b` identity specifically.
 
 use noxis_classfile::{Arith, BranchCond, Cond, Const, Insn, Prim};
 use noxis_core::Rng;
@@ -13,6 +21,7 @@ pub(super) enum Scheme {
     Xor,
     Add,
     Shift,
+    Mba,
 }
 
 impl Scheme {
@@ -21,6 +30,7 @@ impl Scheme {
             "xor" => Some(Scheme::Xor),
             "add" => Some(Scheme::Add),
             "shift" => Some(Scheme::Shift),
+            "mba" => Some(Scheme::Mba),
             _ => None,
         }
     }
@@ -36,7 +46,7 @@ pub(super) fn encrypt_int(value: i32, scheme: Scheme, rng: &mut Rng) -> Vec<Insn
             }
             (value ^ key, key)
         }
-        Scheme::Add => {
+        Scheme::Add | Scheme::Mba => {
             let part = rng.next_u64() as i32;
             (part, value.wrapping_sub(part))
         }
@@ -46,6 +56,7 @@ pub(super) fn encrypt_int(value: i32, scheme: Scheme, rng: &mut Rng) -> Vec<Insn
         Scheme::Xor => binary(first, second, Arith::Xor, Prim::Int),
         Scheme::Add => binary(first, second, Arith::Add, Prim::Int),
         Scheme::Shift => shift_form(value),
+        Scheme::Mba => mba_form(first, second),
     }
 }
 
@@ -59,7 +70,7 @@ pub(super) fn encrypt_long(value: i64, scheme: Scheme, rng: &mut Rng) -> Vec<Ins
             }
             (value ^ key, key)
         }
-        Scheme::Add => {
+        Scheme::Add | Scheme::Mba => {
             let part = rng.next_u64() as i64;
             (part, value.wrapping_sub(part))
         }
@@ -69,6 +80,7 @@ pub(super) fn encrypt_long(value: i64, scheme: Scheme, rng: &mut Rng) -> Vec<Ins
         Scheme::Xor => binary_long(first, second, Arith::Xor),
         Scheme::Add => binary_long(first, second, Arith::Add),
         Scheme::Shift => shift_form_long(value),
+        Scheme::Mba => mba_form_long(first, second),
     }
 }
 
@@ -88,6 +100,53 @@ fn binary_long(first: i64, second: i64, op: Arith) -> Vec<Insn> {
         Insn::Binary {
             prim: Prim::Long,
             op,
+        },
+    ]
+}
+
+/// MBA identity: `a+b == (a&b) + (a|b)` (exact, bit-exact under wrapping).
+/// `a`/`b` are pushed twice (no stack juggling needed) so each sub-expression
+/// stays a plain, correct `and`/`or` - the shape, not a single opcode, is
+/// what a matcher has to recognize.
+fn mba_form(a: i32, b: i32) -> Vec<Insn> {
+    vec![
+        Insn::Const(Const::Int(a)),
+        Insn::Const(Const::Int(b)),
+        Insn::Binary {
+            prim: Prim::Int,
+            op: Arith::And,
+        },
+        Insn::Const(Const::Int(a)),
+        Insn::Const(Const::Int(b)),
+        Insn::Binary {
+            prim: Prim::Int,
+            op: Arith::Or,
+        },
+        Insn::Binary {
+            prim: Prim::Int,
+            op: Arith::Add,
+        },
+    ]
+}
+
+/// The same for `long`.
+fn mba_form_long(a: i64, b: i64) -> Vec<Insn> {
+    vec![
+        Insn::Const(Const::Long(a)),
+        Insn::Const(Const::Long(b)),
+        Insn::Binary {
+            prim: Prim::Long,
+            op: Arith::And,
+        },
+        Insn::Const(Const::Long(a)),
+        Insn::Const(Const::Long(b)),
+        Insn::Binary {
+            prim: Prim::Long,
+            op: Arith::Or,
+        },
+        Insn::Binary {
+            prim: Prim::Long,
+            op: Arith::Add,
         },
     ]
 }
