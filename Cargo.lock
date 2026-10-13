@@ -383,6 +383,7 @@ dependencies = [
  "noxis-classfile",
  "noxis-core",
  "noxis-jar",
+ "noxis-passes",
  "noxis-structure-check",
  "regex",
  "serde",
