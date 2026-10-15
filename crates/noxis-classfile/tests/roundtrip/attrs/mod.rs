@@ -2,6 +2,8 @@
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+mod condy;
+
 use super::round_trip;
 use ristretto_classfile::attributes::{
     Attribute as RtAttr, BootstrapMethod as RtBsm, Instruction as Rt,

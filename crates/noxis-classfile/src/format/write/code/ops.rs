@@ -31,11 +31,23 @@ pub(super) fn int_const(value: &Const, pool: &mut Pool) -> Result<RtInsn, Classf
         Const::Double(v) if *v == 0.0 => RtInsn::Dconst_0,
         Const::Double(v) if *v == 1.0 => RtInsn::Dconst_1,
         Const::Double(_) => RtInsn::Ldc2_w(pool.constant(value)?),
+        // JVMS §4.4.10: a `CONSTANT_Dynamic`'s category comes from its own
+        // descriptor, not from being `Dynamic` - `J`/`D` are category 2
+        // (`ldc2_w`), everything else (references, `I`/`F`/...) is
+        // category 1 (`ldc_w`). Using `ldc2_w` unconditionally here was a
+        // bug: a condy-encrypted `String` would push the wrong stack shape.
         Const::Dynamic {
             name,
             descriptor,
             bootstrap,
-        } => RtInsn::Ldc2_w(pool.dynamic(*bootstrap, name, descriptor)?),
+        } => {
+            let index = pool.dynamic(*bootstrap, name, descriptor)?;
+            if matches!(descriptor.as_str(), "J" | "D") {
+                RtInsn::Ldc2_w(index)
+            } else {
+                RtInsn::Ldc_w(index)
+            }
+        }
         _ => RtInsn::Ldc_w(pool.constant(value)?),
     })
 }
