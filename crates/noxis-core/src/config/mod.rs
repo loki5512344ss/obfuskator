@@ -1,6 +1,8 @@
 //! Конфигурация обфускации: профили, список пассов, keep-правила.
 
+mod from_toml;
 pub mod sections;
+mod toml_lite;
 
 use serde::{Deserialize, Serialize};
 
@@ -146,9 +148,10 @@ impl Config {
         self.profile.baseline().contains(&id)
     }
 
-    /// Загрузить конфиг из TOML.
+    /// Загрузить конфиг из TOML (наш подмножественный парсер, см. `toml_lite`).
     pub fn from_toml(text: &str) -> Result<Self, CoreError> {
-        toml::from_str(text).map_err(|e| CoreError::Config(e.to_string()))
+        let table = toml_lite::parse(text).map_err(|e| CoreError::Config(e.to_string()))?;
+        from_toml::build(&table).map_err(CoreError::Config)
     }
 
     /// Нормализовать значения, которые легко задать нулем/пустым списком.

@@ -57,15 +57,13 @@ pub fn find_leaks(before: &BTreeSet<String>, after: &Program, keep: &KeepRules) 
 pub fn check_patterns(text: &str) -> Vec<&'static str> {
     use std::sync::OnceLock;
 
-    static COMPILED: OnceLock<Vec<(&'static str, regex::Regex)>> = OnceLock::new();
+    use noxis_analysis::minirx::Regex;
+
+    static COMPILED: OnceLock<Vec<(&'static str, Regex)>> = OnceLock::new();
     let compiled = COMPILED.get_or_init(|| {
         RED_PATTERNS
             .iter()
-            .filter_map(|pattern| {
-                regex::Regex::new(pattern)
-                    .ok()
-                    .map(|regex| (*pattern, regex))
-            })
+            .filter_map(|pattern| Regex::new(pattern).ok().map(|regex| (*pattern, regex)))
             .collect()
     });
     compiled

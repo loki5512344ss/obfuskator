@@ -4,7 +4,6 @@
 //! absolute instruction numbers (`switch` - into deltas from itself), constants
 //! and references go to the pool via [`Pool`](super::super::pool::Pool).
 
-use indexmap::IndexMap;
 use ristretto_classfile::attributes::{Instruction as RtInsn, LookupSwitch, TableSwitch};
 
 use super::super::pool::Pool;
@@ -62,13 +61,23 @@ pub(crate) fn convert(
                 .map(|target| delta(index, resolve(*target)?))
                 .collect::<Result<_, _>>()?,
         })),
-        Insn::LookupSwitch { default, pairs } => RtInsn::Lookupswitch(Box::new(LookupSwitch {
-            default: delta(index, resolve(*default)?)?,
-            pairs: pairs
-                .iter()
-                .map(|(key, target)| Ok((*key, delta(index, resolve(*target)?)?)))
-                .collect::<Result<IndexMap<_, _>, ClassfileError>>()?,
-        })),
+        Insn::LookupSwitch { default, pairs } => {
+            // `ristretto_classfile::attributes::LookupSwitch::pairs` is typed
+            // `indexmap::IndexMap<i32, i32>` by the (out-of-scope) backend crate
+            // itself, so an insertion-ordered map still ends up on the wire here -
+            // we just build it without naming `indexmap` directly in this crate.
+            // Match order must be preserved: it's the `lookupswitch` operand
+            // order, which the JVM spec (and verifiers) require sorted by key,
+            // and callers already hand us `pairs` pre-sorted.
+            let mut resolved = Vec::with_capacity(pairs.len());
+            for (key, target) in pairs {
+                resolved.push((*key, delta(index, resolve(*target)?)?));
+            }
+            RtInsn::Lookupswitch(Box::new(LookupSwitch {
+                default: delta(index, resolve(*default)?)?,
+                pairs: resolved.into_iter().collect(),
+            }))
+        }
         Insn::Return(prim) => ret_op(*prim),
         Insn::AReturn => RtInsn::Areturn,
         Insn::GetStatic {

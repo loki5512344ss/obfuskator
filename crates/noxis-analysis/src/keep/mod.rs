@@ -3,7 +3,8 @@
 use std::collections::BTreeSet;
 
 use noxis_classfile::Program;
-use regex::Regex;
+
+use crate::minirx::{self, Regex};
 
 use crate::entrypoints::Entrypoints;
 use noxis_core::Config;
@@ -14,7 +15,7 @@ mod scans;
 pub use dispatch::external_dispatch_families;
 
 /// Compiled glob: `*` - anything but `/`, `**` - anything, `?` - one char.
-fn compile(pattern: &str) -> Result<Regex, regex::Error> {
+fn compile(pattern: &str) -> Result<Regex, minirx::Error> {
     let mut out = String::from("^");
     let chars: Vec<char> = pattern.chars().collect();
     let mut i = 0;
@@ -34,7 +35,7 @@ fn compile(pattern: &str) -> Result<Regex, regex::Error> {
                 i += 1;
             }
             c => {
-                out.push_str(&regex::escape(&c.to_string()));
+                out.push_str(&minirx::escape(&c.to_string()));
                 i += 1;
             }
         }

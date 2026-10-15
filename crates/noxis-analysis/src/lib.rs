@@ -12,6 +12,7 @@ pub mod entrypoints;
 pub mod hierarchy;
 pub mod jdk;
 pub mod keep;
+pub mod minirx;
 
 pub use entrypoints::Entrypoints;
 pub use hierarchy::{ClassHierarchy, RenameSafety, method_rename_safety};

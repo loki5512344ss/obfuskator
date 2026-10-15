@@ -7,7 +7,6 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
-indexmap = { workspace = true }
 thiserror = { workspace = true }
 ristretto_classfile = "0.34"
 
