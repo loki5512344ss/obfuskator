@@ -120,11 +120,12 @@ pub(super) const DECOY_RIGHT: &[&str] = &[
 
 /// `Plausible` style word bank. Mixes domain-neutral software nouns with
 /// terms that are boring, structural scaffolding in the client/mod
-/// ecosystem noxis is actually used on (see
-/// `/storage/project/jvm/LoVisual/ref/clients/*`: `Module`, `Setting`,
-/// `Event`, `Mixin`, `Manager`, `Component`, `Accessor`, `Hud`, `Overlay`,
-/// `Theme`, `Timer`, `Animation`, `Rotation` all show up dozens of times
-/// across real client codebases). Deliberately excludes anything that
+/// ecosystem noxis is actually used on (surveyed against decompiled
+/// reference client/mod sources, not shipped in this repo: `Module`,
+/// `Setting`, `Event`, `Mixin`, `Manager`, `Component`, `Accessor`, `Hud`,
+/// `Overlay`, `Theme`, `Timer`, `Animation`, `Rotation` all show up dozens
+/// of times across real client codebases). Deliberately excludes anything
+/// that
 /// itself reads as a "feature flag" worth an analyst's attention (no
 /// `Esp`/`Aimbot`/`KillAura`/`Chams`): a decoy name that announces
 /// "interesting code lives here" defeats the point of blending in.
