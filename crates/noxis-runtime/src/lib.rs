@@ -6,5 +6,7 @@ pub mod codec;
 pub mod decoder;
 pub mod scheme;
 
-pub use decoder::{DECODER_DESC, DECODER_METHOD, decoder_class, decoder_owner};
+pub use decoder::{
+    BOOTSTRAP_DESC, BOOTSTRAP_METHOD, DECODER_DESC, DECODER_METHOD, decoder_class, decoder_owner,
+};
 pub use scheme::{Blob, Scheme, decrypt, encrypt};

@@ -79,6 +79,12 @@ pub struct StringsConfig {
     /// Derive the key from KDF(class, method, index) instead of placing it
     /// next to the ciphertext.
     pub derive_key: bool,
+    /// Emit strings as `CONSTANT_Dynamic` (condy) resolved by the decoder's
+    /// bootstrap method instead of direct `d(cipher, salt)` calls. A
+    /// concrete-execution deobfuscator cannot follow the condy resolution
+    /// (todo.md, 2026-10-14: SSVM made 0 changes on a condy-only class).
+    /// Requires classfile >= 55; older classes keep direct calls.
+    pub condy: bool,
 }
 
 impl Default for StringsConfig {
@@ -89,6 +95,7 @@ impl Default for StringsConfig {
             split_above: 64,
             skip: Vec::new(),
             derive_key: true,
+            condy: false,
         }
     }
 }

@@ -69,7 +69,14 @@ pub(super) fn build_rename(t: &Table) -> Res<RenameConfig> {
 pub(super) fn build_strings(t: &Table) -> Res<StringsConfig> {
     check_known_keys(
         t,
-        &["schemes", "min_len", "split_above", "skip", "derive_key"],
+        &[
+            "schemes",
+            "min_len",
+            "split_above",
+            "skip",
+            "derive_key",
+            "condy",
+        ],
         "strings",
     )?;
     let mut c = StringsConfig::default();
@@ -87,6 +94,9 @@ pub(super) fn build_strings(t: &Table) -> Res<StringsConfig> {
     }
     if let Some(v) = t.get("derive_key") {
         c.derive_key = expect_bool(v, "strings.derive_key")?;
+    }
+    if let Some(v) = t.get("condy") {
+        c.condy = expect_bool(v, "strings.condy")?;
     }
     Ok(c)
 }

@@ -62,3 +62,10 @@ fn parses_name_style_in_rename_section() {
     let cfg = build_from("[rename]\nclass_style = \"il-o0\"\n").unwrap();
     assert_eq!(cfg.rename.class_style, NameStyle::IlO0);
 }
+
+#[test]
+fn parses_condy_flag_in_strings_section() {
+    let cfg = build_from("[strings]\ncondy = true\n").unwrap();
+    assert!(cfg.strings.condy);
+    assert!(!Config::default().strings.condy);
+}

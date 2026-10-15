@@ -2,6 +2,8 @@
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+mod condy;
+
 use noxis_classfile::{ClassBuilder, Code, Const, Insn, MAX_METHOD_INSNS, Program, Version};
 use noxis_core::{Config, Context};
 use noxis_runtime::{Scheme, encrypt};
@@ -10,7 +12,7 @@ use super::StringsPass;
 use super::crypt::{decode_sequence, salt_for_scheme, split_chunks};
 use noxis_core::Pass;
 
-fn sample() -> Program {
+pub(super) fn sample() -> Program {
     let code = Code {
         max_stack: 1,
         max_locals: 0,

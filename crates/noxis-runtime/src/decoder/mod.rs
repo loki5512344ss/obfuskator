@@ -31,6 +31,11 @@ use kdf::{Gen, c_int, c_long, c_str, call, load, store};
 pub const DECODER_METHOD: &str = "d";
 /// Дескриптор метода декодера.
 pub const DECODER_DESC: &str = "(Ljava/lang/String;I)Ljava/lang/String;";
+/// Имя bootstrap-метода для `CONSTANT_Dynamic` (condy-строки).
+pub const BOOTSTRAP_METHOD: &str = "b";
+/// Дескриптор bootstrap-метода: стандартный префикс BSM
+/// (`Lookup`, `name`, `type`) плюс наши аргументы `cipher` и `salt`.
+pub const BOOTSTRAP_DESC: &str = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;Ljava/lang/String;I)Ljava/lang/String;";
 
 /// Ошибка генерации рантайма.
 #[derive(Debug, thiserror::Error)]
@@ -78,7 +83,36 @@ pub fn decoder_class(
             major: 49,
         })
         .method_with_code(0x0009, DECODER_METHOD, DECODER_DESC, code)
+        .method_with_code(
+            0x0009,
+            BOOTSTRAP_METHOD,
+            BOOTSTRAP_DESC,
+            bootstrap_code(internal_name),
+        )
         .build())
+}
+
+/// Тело bootstrap-метода: `b(lookup, name, type, cipher, salt) = d(cipher, salt)`.
+///
+/// JVM вызывает его сама при первом `ldc` condy-константы и кеширует
+/// результат - метод должен быть `public static` и возвращать значение
+/// дескриптора константы (`Ljava/lang/String;`).
+fn bootstrap_code(owner: &str) -> Code {
+    Code {
+        max_stack: 2,
+        // Слоты 0-2 (lookup/name/type) заняты стандартным префиксом BSM,
+        // cipher и salt живут в 3 и 4.
+        max_locals: 5,
+        insns: vec![
+            load(3, SlotKind::Ref),
+            load(4, SlotKind::Int),
+            call(owner, DECODER_METHOD, DECODER_DESC, InvokeKind::Static),
+            Insn::AReturn,
+        ],
+        exception_table: Vec::new(),
+        frames: Vec::new(),
+        attributes: Vec::new(),
+    }
 }
 
 /// Имя класса-декодера для прогона: детерминированно от сида, но выглядит

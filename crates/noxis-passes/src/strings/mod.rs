@@ -4,6 +4,7 @@
 //! (KDF or RNG stream - see `derive_key`). The decoder is generated once per
 //! program and only if at least one string was encrypted.
 
+mod condy;
 mod crypt;
 
 #[cfg(test)]
@@ -12,7 +13,9 @@ mod tests;
 use std::collections::BTreeMap;
 
 use noxis_analysis::{ClassHierarchy, JdkHierarchy};
-use noxis_classfile::{Const, Insn, MAX_METHOD_INSNS, Program, compute_frames};
+use noxis_classfile::{
+    Attribute, BootstrapMethod, Const, Insn, MAX_METHOD_INSNS, Program, compute_frames,
+};
 use noxis_core::{Context, CoreError, NameStyle, Pass, PassId, PassReport, derive_seed};
 use noxis_runtime::{Scheme, decoder_class, decoder_owner, encrypt};
 
@@ -69,6 +72,17 @@ impl Pass for StringsPass {
         let owner = decoder_name(ctx, program);
         let mut chunk_counter = 0usize;
         let mut salt_counter = 0u64;
+        // Condy mode: per-class next bootstrap index + accumulated entries
+        // (appended to the class attribute after the rewrite below).
+        let mut bsm_next: BTreeMap<usize, u16> = BTreeMap::new();
+        let mut bsm_entries: BTreeMap<usize, Vec<BootstrapMethod>> = BTreeMap::new();
+        if cfg.condy {
+            for (ci, class) in program.classes.iter().enumerate() {
+                if condy::supported(class) {
+                    bsm_next.insert(ci, condy::base_index(class));
+                }
+            }
+        }
         let mut replacements: BTreeMap<(usize, usize, usize), Vec<Insn>> = BTreeMap::new();
         for (ci, mi, ii, text) in &targets {
             let mut parts = Vec::new();
@@ -80,7 +94,19 @@ impl Pass for StringsPass {
                 parts.push((blob.cipher, salt));
                 chunk_counter += 1;
             }
-            replacements.insert((*ci, *mi, *ii), decode_sequence(&owner, &parts));
+            if let Some(next) = bsm_next.get_mut(ci) {
+                let base = *next;
+                for (cipher, salt) in &parts {
+                    bsm_entries
+                        .entry(*ci)
+                        .or_default()
+                        .push(condy::entry(&owner, cipher, *salt));
+                }
+                *next = base + parts.len() as u16;
+                replacements.insert((*ci, *mi, *ii), condy::sequence(base, parts.len()));
+            } else {
+                replacements.insert((*ci, *mi, *ii), decode_sequence(&owner, &parts));
+            }
         }
         let mut mutated: Vec<(usize, usize)> = Vec::new();
         let mut applied = 0usize;
@@ -126,6 +152,21 @@ impl Pass for StringsPass {
             decoder_class(&owner, master, &scheme_names).map_err(|e| pass_error(e.to_string()))?;
         program.classes.push(decoder);
         ctx.note(format!("string decoder: {owner}"));
+        // Phase 3b: condy bootstrap entries land on their classes (appended
+        // after existing lambdas - the indices computed above assumed that).
+        for (ci, entries) in bsm_entries {
+            let class = program
+                .classes
+                .get_mut(ci)
+                .ok_or_else(|| pass_error("class vanished"))?;
+            match class.attributes.iter_mut().find_map(|a| match a {
+                Attribute::BootstrapMethods(list) => Some(list),
+                _ => None,
+            }) {
+                Some(list) => list.extend(entries),
+                None => class.attributes.push(Attribute::BootstrapMethods(entries)),
+            }
+        }
         // Phase 4: frames of the touched methods.
         let hierarchy = ClassHierarchy::build(program);
         let frames_hierarchy = JdkHierarchy::wrap(&hierarchy);
